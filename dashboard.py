@@ -1,7 +1,8 @@
 import streamlit as st
 from graphs_plot import run_graphs_plot
 from coreHeatmapPlot import run_core_heatmap_plot
-from core_heatmap_comparaison import run_core_heatmap_comparison
+from core_heatmap_comparaison import run_core_heatmap_comparaison
+
 from excel_CPU_calculations import run_excel_CPU_calculations
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
@@ -29,4 +30,4 @@ if st.button("Run Selected Tool"):
     elif option == "Core Heatmap Plot":
         run_core_heatmap_plot()
     elif option == "Core Heatmap Comparison":
-        run_core_heatmap_comparison()
+        run_core_heatmap_comparaison()
