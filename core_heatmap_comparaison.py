@@ -55,7 +55,7 @@ def plot_heatmap(core_df, file_name=""):
     plt.tight_layout()
     return fig
 
-def run_core_heatmap_plot():
+def run_core_heatmap_comparaison():
     st.header("🔥 Core Heatmap Plot")
     uploaded_file = st.file_uploader("📂 Upload a CSV or Excel file", type=["csv", "xls", "xlsx"])
 
@@ -81,4 +81,4 @@ def run_core_heatmap_plot():
             st.error(f"❌ Error processing file: {str(e)}")
 
 if __name__ == "__main__":
-    run_core_heatmap_plot()
+    run_core_heatmap_comparaison()
