@@ -1,125 +1,84 @@
-def run_core_heatmap_comparison():
-    import pandas as pd
-    import numpy as np
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from tkinter import filedialog, messagebox, Tk
-    import os
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import streamlit as st
+from io import BytesIO
+import os
 
-    START_ROW = 3
-    CORE_LIST = [f"Core {i}" for i in range(26)]
+START_ROW = 3
+CORE_LIST = [f"Core {i}" for i in range(26)]
 
-    def ask_for_file(prompt):
-        root = Tk()
-        root.withdraw()
-        messagebox.showinfo("Select File", prompt)
-        return filedialog.askopenfilename(
-            title=prompt,
-            filetypes=[("CSV and Excel files", "*.csv *.xls *.xlsx")]
-        )
+def extract_core_data(df):
+    core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
+    if not core_cols:
+        raise ValueError("No core temperature columns found.")
+    time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
+    core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
+    core_data.index = time
+    core_data.columns = [df.iloc[1, i] for i in core_cols]
+    return core_data
 
-    def confirm_selection(file_path, label):
-        root = Tk()
-        root.withdraw()
-        return messagebox.askyesno("Confirm File", f"{label} selected:\n\n{file_path}\n\nIs this correct?")
+def plot_heatmap(core_df, file_name=""):
+    averages = core_df[core_df != 0].mean()
+    overall_avg = averages.mean()
 
-    def load_file(file_path):
-        if file_path.endswith(".csv"):
-            return pd.read_csv(file_path, header=None, low_memory=False)
-        elif file_path.endswith((".xls", ".xlsx")):
-            return pd.read_excel(file_path, header=None)
-        else:
-            raise ValueError("Unsupported file format.")
+    fig = plt.figure(figsize=(16, 8))
+    spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])
 
-    def extract_core_data(df):
-        core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
-        time_col = 0
-        time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
-        core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
-        core_data.index = time
-        core_data.columns = [df.iloc[1, i] for i in core_cols]
+    ax0 = fig.add_subplot(spec[0])
+    sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
+    ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n{file_name}")
+    ax0.set_xlabel("Time (s)")
+    ax0.set_ylabel("CPU Cores")
 
-        # Treat 0s as missing (convert to NaN)
-        core_data = core_data.replace(0, np.nan)
+    ax1 = fig.add_subplot(spec[1])
+    bars = ax1.barh(averages.index, averages.values, color='gray')
+    ax1.set_title("Avg Temp per Core")
+    ax1.set_xlim(averages.min() - 5, averages.max() + 5)
+    ax1.set_xlabel("°C")
 
-        # Round time to nearest 60 seconds (bucket per minute)
-        core_data['time_bucket'] = (core_data.index // 60) * 60
-        grouped = core_data.groupby('time_bucket').mean()
+    for bar, value in zip(bars, averages.values):
+        ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}°C",
+                 va='center', ha='left', fontsize=9)
 
-        return grouped.dropna(axis=1, how='all')  # drop cores that are all NaN
+    ax1.text(
+        0.5, 1.05,
+        f"Overall Avg Temp: {overall_avg:.1f}°C",
+        ha='center', va='center',
+        transform=ax1.transAxes,
+        fontsize=12,
+        fontweight='bold',
+        bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='lightyellow')
+    )
+    plt.tight_layout()
+    return fig
 
-    def plot_difference_heatmap(df1, df2, file1_path, file2_path, tolerance_seconds=60):
-        # Align by time bucket and core names
-        t1 = pd.to_numeric(df1.iloc[-1, 0], errors='coerce')
-        t2 = pd.to_numeric(df2.iloc[-1, 0], errors='coerce')
+def run_core_heatmap_plot():
+    st.header("🔥 Core Heatmap Plot")
+    uploaded_file = st.file_uploader("📂 Upload a CSV or Excel file", type=["csv", "xls", "xlsx"])
 
-        if pd.isna(t1) or pd.isna(t2):
-            messagebox.showerror("Invalid Timestamp", "Could not read the final timestamp from one or both files.")
-            exit()
+    if uploaded_file:
+        file_name = os.path.basename(uploaded_file.name)
 
-        if abs(t1 - t2) > tolerance_seconds:
-            messagebox.showerror(
-                "Mismatch Detected",
-                f"Last timestamps differ too much:\nFile 1: {t1}\nFile 2: {t2}\n\nDifference: {diff:.2f} seconds"
-            )
-            exit()
-            
-        common_index = df1.index.intersection(df2.index)
-        common_columns = df1.columns.intersection(df2.columns)
+        try:
+            if uploaded_file.name.endswith(".csv"):
+                df = pd.read_csv(uploaded_file, header=None)
+            else:
+                df = pd.read_excel(uploaded_file, header=None)
 
-        df1_aligned = df1.loc[common_index, common_columns]
-        df2_aligned = df2.loc[common_index, common_columns]
-        df_diff = df2_aligned - df1_aligned
+            core_df = extract_core_data(df)
+            fig = plot_heatmap(core_df, file_name)
+            st.pyplot(fig)
 
-        plt.figure(figsize=(14, 6))
-        sns.heatmap(df_diff.T, cmap="RdBu", center=0, cbar_kws={'label': 'ΔTemp (°C)'})
-        title = f"Difference Heatmap\n({os.path.basename(file2_path)} - {os.path.basename(file1_path)})\nAveraged every 60 seconds"
-        plt.title(title)
-        plt.xlabel("Time Bucket (s)")
-        plt.ylabel("CPU Cores")
-        plt.tight_layout()
-        plt.show()
+            # Save option
+            buf = BytesIO()
+            fig.savefig(buf, format="png")
+            st.download_button("💾 Download Heatmap", buf.getvalue(), file_name="heatmap.png")
 
-        # Ask to save
-        root = Tk()
-        root.withdraw()
-        save = messagebox.askyesno("Save Heatmap", "Do you want to save the difference heatmap?")
-        if save:
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".png",
-                filetypes=[("PNG Image", "*.png")],
-                title="Save Heatmap As",
-                initialfile="difference_heatmap_avg_60s.png"
-            )
-            if file_path:
-                plt.figure(figsize=(14, 6))
-                sns.heatmap(df_diff.T, cmap="RdBu", center=0, cbar_kws={'label': 'ΔTemp (°C)'})
-                plt.title("Difference Heatmap (File 2 - File 1)\nAveraged every 60 seconds")
-                plt.xlabel("Time Bucket (s)")
-                plt.ylabel("CPU Cores")
-                plt.tight_layout()
-                plt.savefig(file_path)
-                messagebox.showinfo("Saved", f"Heatmap saved to:\n{file_path}")
-                plt.close()
+        except Exception as e:
+            st.error(f"❌ Error processing file: {str(e)}")
 
-    while True:
-        file1 = ask_for_file("Select the FIRST file")
-        if not file1: exit()
-        if confirm_selection(file1, "First file"):
-            break
-
-    while True:
-        file2 = ask_for_file("Select the SECOND file")
-        if not file2: exit()
-        if confirm_selection(file2, "Second file"):
-            break
-
-    try:
-        df1 = extract_core_data(load_file(file1))
-        df2 = extract_core_data(load_file(file2))
-        plot_difference_heatmap(df1, df2, file1, file2)
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred:\n{str(e)}")
-        
 if __name__ == "__main__":
-    run_core_heatmap_comparison()
+    run_core_heatmap_plot()
