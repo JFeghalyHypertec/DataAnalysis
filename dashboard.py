@@ -21,7 +21,7 @@ tool = st.selectbox(
 if tool == "Excel CPU Calculations":
     uploaded_file = st.file_uploader("Upload a CPU data file", type=["csv", "xls", "xlsx"])
     if uploaded_file:
-        run_excel_CPU_calculations(uploaded_file)
+        run_excel_CPU_calculations()
 
 elif tool == "Graphs Plot":
     uploaded_file = st.file_uploader("Upload a CPU data file", type=["csv", "xls", "xlsx"])
