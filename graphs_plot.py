@@ -26,7 +26,8 @@ def plot_time_series(time, temperature, label, file_name):
         label=f"📥 Download {label} Time Series",
         data=buf.getvalue(),
         file_name=f"{file_name}_{label.replace(' ', '_')}_timeseries.png",
-        mime="image/png"
+        mime="image/png",
+        key=f"{file_name}_{label}_download"
     )
     plt.close(fig)
 
@@ -35,7 +36,6 @@ def get_time_series(df, parameter, file_name):
         if df.iloc[1, col] == parameter:
             time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
             temperature = pd.to_numeric(df.iloc[START_ROW:, col], errors='coerce')
-            label = df.iloc[1, col]
 
             # Create raw dataframe
             data = pd.DataFrame({'time': time, 'value': temperature}).dropna().iloc[2:]
@@ -59,7 +59,7 @@ def get_time_series(df, parameter, file_name):
             averaged_data = averaged_data.sort_values(by='time')
 
             # Plot
-            plot_time_series(averaged_data['time'], averaged_data['value'], label, file_name)
+            plot_time_series(averaged_data['time'], averaged_data['value'], parameter, file_name)
 
 
 def plot_core_temperature_dominance(df, file_name):
