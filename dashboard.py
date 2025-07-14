@@ -28,7 +28,7 @@ with col3:
         st.session_state.active_tool = "Heatmap"
 
 with col4:
-    if st.button("🔥 Core Heatmap Comparison"):
+    if st.button("🔥 Core Difference Heatmap"):
         st.session_state.active_tool = "Comparison"
 
 st.divider()
@@ -47,5 +47,5 @@ elif st.session_state.active_tool == "Heatmap":
     run_core_heatmap_plot()
 
 elif st.session_state.active_tool == "Comparison":
-    st.subheader("🔥 Core Heatmap Comparison")
+    st.subheader("🔥 Core Difference Heatmap")
     run_core_heatmap_comparaison()
