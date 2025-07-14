@@ -93,7 +93,12 @@ def plot_core_temperature_dominance(df, file_name):
     counts = list(filtered_counts.values())
 
     fig1, ax1 = plt.subplots(figsize=(12, 5))
-    ax1.bar(labels, counts)
+    bars = ax1.bar(labels, counts)
+    
+    for bar, count in zip(bars, counts):
+        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+                 str(count), ha='center', va='bottom', fontsize=9)
+        
     ax1.set_xticklabels(labels, rotation=90)
     ax1.set_ylabel("Times Core was Max")
     ax1.set_title(f"Core Max Temperature Count (Histogram) of {file_name}")
