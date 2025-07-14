@@ -8,10 +8,10 @@ from pathlib import Path
 import uuid
 
 START_ROW = 3
-
 CPU_TIME_SERIE_PLOT = ["CPU Package", "Core Max"]
-
 CORE_LIST = [f"Core {i}" for i in range(26)]
+TIME_RANGE = 5 * 60  # 5 minutes in seconds
+
 
 def plot_time_series(time, temperature, label, file_name):
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -45,7 +45,7 @@ def get_time_series(df, parameter, file_name):
             data = data[data['value'] != 0]
 
             # Bin time into 60-second intervals (as integers)
-            data['minute_bin'] = (data['time'] // 60).astype(int)
+            data['minute_bin'] = (data['time'] // TIME_RANGE).astype(int)
 
             # Group by each minute and average the temperature
             averaged_data = data.groupby('minute_bin').agg({
