@@ -59,21 +59,38 @@ def plot_heatmap(core_df, file_path):
 def run_core_heatmap_plot():
     st.header("🔍 Core Heatmap Plot")
 
-    uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=['csv', 'xls', 'xlsx'])
-    file_name = os.path.basename(uploaded_file.name) if uploaded_file else "No file uploaded"
-    if uploaded_file is not None:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file, header=None)
-        else:
-            df = pd.read_excel(uploaded_file, header=None)
-        try:
-            core_df = extract_core_data(df)
-            fig = plot_heatmap(core_df, uploaded_file)
-            st.pyplot(fig)
-    
-            # Save download
-            buf = BytesIO()
-            fig.savefig(buf, format="png")
-            st.download_button("💾 Download Heatmap", buf.getvalue(), file_name="heatmap.png")
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+    uploaded_files = st.file_uploader(
+        "Upload one or more CSV or Excel files",
+        type=['csv', 'xls', 'xlsx'],
+        accept_multiple_files=True
+    )
+
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            file_name = os.path.basename(uploaded_file.name)
+
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file, header=None)
+                else:
+                    df = pd.read_excel(uploaded_file, header=None)
+
+                core_df = extract_core_data(df)
+                fig = plot_heatmap(core_df, file_name)
+
+                st.subheader(f"📊 Heatmap for: `{file_name}`")
+                st.pyplot(fig)
+
+                # Save button with dynamic filename
+                buf = BytesIO()
+                fig.savefig(buf, format="png")
+                st.download_button(
+                    label=f"💾 Download Heatmap for {file_name}",
+                    data=buf.getvalue(),
+                    file_name=f"{file_name.replace('.','_')}_heatmap.png",
+                    mime="image/png"
+                )
+                st.markdown("---")  # Divider between plots
+
+            except Exception as e:
+                st.error(f"❌ Error processing {file_name}: {str(e)}")
