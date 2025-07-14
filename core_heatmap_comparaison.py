@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
 from io import BytesIO
+import matplotlib.gridspec as gridspec
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
@@ -88,13 +89,37 @@ def run_core_heatmap_comparaison():
         df_diff = df2_aligned - df1_aligned
 
         st.subheader("🧊 Temperature Difference Heatmap")
-        fig, ax = plt.subplots(figsize=(14, 6))
-        sns.heatmap(df_diff.T, cmap="RdBu", center=0, cbar_kws={'label': 'ΔTemp (°C)'}, ax=ax)
+        fig = plt.figure(figsize=(16, 8))
+        spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])
+        
+        ax0 = fig.add_subplot(spec[0])
+        sns.heatmap(df_diff.T, cmap="RdBu", center=0, cbar_kws={'label': 'ΔTemp (°C)'}, ax=ax0)
 
         title = f"Difference Heatmap ({file2_name} - {file1_name})\nAveraged every 60 seconds"
-        ax.set_title(title)
-        ax.set_xlabel("Time Bucket (s)")
-        ax.set_ylabel("CPU Cores")
+        ax0.set_title(title)
+        ax0.set_xlabel("Time Bucket (s)")
+        ax0.set_ylabel("CPU Cores")
+        
+        averages = df_diff[df_diff != 0].mean()
+        overall_avg = averages.mean()
+        ax1 = fig.add_subplot(spec[1])
+        bars = ax1.barh(averages.index, averages.values, color='gray')
+        ax1.set_title("Avg Temp Difference per Core")
+        ax1.set_xlim(averages.min() - 5, averages.max() + 5)
+        ax1.set_xlabel("°C")
+        for bar, value in zip(bars, averages.values):
+            ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}°C",
+                     va='center', ha='left', fontsize=9)
+            
+        ax1.text(
+            0.5, 1.05,
+            f"Overall Avg Temp Difference: {overall_avg:.1f}°C",
+            ha='center', va='center',
+            transform=ax1.transAxes,
+            fontsize=12,
+            fontweight='bold',
+            bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='lightyellow')
+        )
         st.pyplot(fig)
 
         # Download option
