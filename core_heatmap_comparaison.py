@@ -78,7 +78,12 @@ def run_core_heatmap_comparaison():
             df1_aligned = df1_aligned.subtract(tr1_df1, axis=0)
             df2_aligned = df2_aligned.subtract(tr1_df2, axis=0)
         else:
-            st.warning("⚠️ TR1 not found in at least one of the files. Skipping TR1 adjustment.")
+            missing_in = []
+            if tr1_df1 is None:
+                missing_in.append(f"❌ TR1 not found in **{file1_name}**")
+            if tr1_df2 is None:
+                missing_in.append(f"❌ TR1 not found in **{file2_name}**")
+            st.warning("⚠️ TR1 adjustment skipped:\n" + "\n".join(missing_in))
 
         
         df_diff = df2_aligned - df1_aligned
