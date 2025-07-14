@@ -3,7 +3,7 @@ from graphs_plot import run_graphs_plot
 from coreHeatmapPlot import run_core_heatmap_plot
 from core_heatmap_comparaison import run_core_heatmap_comparaison
 from excel_CPU_calculations import run_excel_CPU_calculations
-from core_heatmap_comparaison import run_core_percentage_difference
+from core_percentage_difference import run_core_percentage_difference
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
