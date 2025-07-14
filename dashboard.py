@@ -48,7 +48,4 @@ elif st.session_state.active_tool == "Heatmap":
 
 elif st.session_state.active_tool == "Comparison":
     st.subheader("🔥 Core Heatmap Comparison")
-    file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
-    file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv", "xls", "xlsx"], key="file2")
-    if file1 and file2:
-        run_core_heatmap_comparaison(file1, file2)
+    run_core_heatmap_comparaison()

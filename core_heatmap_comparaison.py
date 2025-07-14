@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import streamlit as st
 from io import BytesIO
 import os
@@ -12,73 +11,59 @@ CORE_LIST = [f"Core {i}" for i in range(26)]
 
 def extract_core_data(df):
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
-    if not core_cols:
-        raise ValueError("No core temperature columns found.")
-    time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
+    time_col = 0
+    time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
     core_data.columns = [df.iloc[1, i] for i in core_cols]
-    return core_data
 
-def plot_heatmap(core_df, file_name=""):
-    averages = core_df[core_df != 0].mean()
-    overall_avg = averages.mean()
+    core_data = core_data.replace(0, np.nan)
+    core_data['time_bucket'] = (core_data.index // 60) * 60
+    grouped = core_data.groupby('time_bucket').mean()
 
-    fig = plt.figure(figsize=(16, 8))
-    spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])
-
-    ax0 = fig.add_subplot(spec[0])
-    sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
-    ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n{file_name}")
-    ax0.set_xlabel("Time (s)")
-    ax0.set_ylabel("CPU Cores")
-
-    ax1 = fig.add_subplot(spec[1])
-    bars = ax1.barh(averages.index, averages.values, color='gray')
-    ax1.set_title("Avg Temp per Core")
-    ax1.set_xlim(averages.min() - 5, averages.max() + 5)
-    ax1.set_xlabel("°C")
-
-    for bar, value in zip(bars, averages.values):
-        ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}°C",
-                 va='center', ha='left', fontsize=9)
-
-    ax1.text(
-        0.5, 1.05,
-        f"Overall Avg Temp: {overall_avg:.1f}°C",
-        ha='center', va='center',
-        transform=ax1.transAxes,
-        fontsize=12,
-        fontweight='bold',
-        bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='lightyellow')
-    )
-    plt.tight_layout()
-    return fig
+    return grouped.dropna(axis=1, how='all')
 
 def run_core_heatmap_comparaison():
-    st.header("🔥 Core Heatmap Plot")
-    uploaded_file = st.file_uploader("📂 Upload a CSV or Excel file", type=["csv", "xls", "xlsx"])
+    file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
+    file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv", "xls", "xlsx"], key="file2")
+    try:
+        file1_name = os.path.basename(file1.name)
+        file2_name = os.path.basename(file2.name)
 
-    if uploaded_file:
-        file_name = os.path.basename(uploaded_file.name)
+        df1 = pd.read_csv(file1, header=None) if file1.name.endswith(".csv") else pd.read_excel(file1, header=None)
+        df2 = pd.read_csv(file2, header=None) if file2.name.endswith(".csv") else pd.read_excel(file2, header=None)
 
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df = pd.read_csv(uploaded_file, header=None)
-            else:
-                df = pd.read_excel(uploaded_file, header=None)
+        df1 = extract_core_data(df1)
+        df2 = extract_core_data(df2)
 
-            core_df = extract_core_data(df)
-            fig = plot_heatmap(core_df, file_name)
-            st.pyplot(fig)
+        # Validate time alignment
+        t1 = df1.index.max()
+        t2 = df2.index.max()
+        if abs(t1 - t2) > 60:
+            st.warning(f"❗ Time misalignment detected.\nLast timestamp difference: {abs(t1 - t2)} seconds")
 
-            # Save option
-            buf = BytesIO()
-            fig.savefig(buf, format="png")
-            st.download_button("💾 Download Heatmap", buf.getvalue(), file_name="heatmap.png")
+        common_index = df1.index.intersection(df2.index)
+        common_columns = df1.columns.intersection(df2.columns)
 
-        except Exception as e:
-            st.error(f"❌ Error processing file: {str(e)}")
+        df1_aligned = df1.loc[common_index, common_columns]
+        df2_aligned = df2.loc[common_index, common_columns]
+        df_diff = df2_aligned - df1_aligned
 
-if __name__ == "__main__":
-    run_core_heatmap_comparaison()
+        st.subheader("🧊 Temperature Difference Heatmap")
+        fig, ax = plt.subplots(figsize=(14, 6))
+        sns.heatmap(df_diff.T, cmap="RdBu", center=0, cbar_kws={'label': 'ΔTemp (°C)'}, ax=ax)
+
+        title = f"Difference Heatmap ({file2_name} - {file1_name})\nAveraged every 60 seconds"
+        ax.set_title(title)
+        ax.set_xlabel("Time Bucket (s)")
+        ax.set_ylabel("CPU Cores")
+        st.pyplot(fig)
+
+        # Download option
+        buf = BytesIO()
+        fig.savefig(buf, format="png")
+        st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(),
+                           file_name="difference_heatmap.png", mime="image/png")
+
+    except Exception as e:
+        st.error(f"❌ Error processing files: {str(e)}")
