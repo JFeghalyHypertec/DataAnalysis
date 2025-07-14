@@ -41,7 +41,8 @@ def extract_core_data(df):
 def run_core_heatmap_comparaison():
     file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
     file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv", "xls", "xlsx"], key="file2")
-    
+    st.info("ℹ️ **Recommended:** Upload the **hottest test** as the **second file** and the **coldest test** as the **first file**.\nThis ensures that temperature differences are positive when cooling is effective.")
+
     if not file1 or not file2:
         return
     
@@ -71,6 +72,9 @@ def run_core_heatmap_comparaison():
         df1_aligned = df1.loc[common_index, common_columns]
         df2_aligned = df2.loc[common_index, common_columns]
         
+        df1_aligned /= 3600  # Convert index to hours
+        df2_aligned /= 3600  # Convert index to hours
+        
         if tr1_df1 is not None and tr1_df2 is not None:
             tr1_df1 = tr1_df1.loc[common_index]
             tr1_df2 = tr1_df2.loc[common_index]
@@ -97,13 +101,14 @@ def run_core_heatmap_comparaison():
 
         title = f"Difference Heatmap ({file2_name} - {file1_name})\nAveraged every 60 seconds"
         ax0.set_title(title)
-        ax0.set_xlabel("Time Bucket (s)")
+        ax0.set_xlabel("Time (hours)")
         ax0.set_ylabel("CPU Cores")
         
         averages = df_diff[df_diff != 0].mean()
         overall_avg = averages.mean()
         ax1 = fig.add_subplot(spec[1])
-        bars = ax1.barh(averages.index, averages.values, color='gray')
+        colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in averages.values]
+        bars = ax1.barh(averages.index, averages.values, color=colors)
         ax1.set_title("Avg Temp Difference per Core")
         ax1.set_xlim(averages.min() - 5, averages.max() + 5)
         ax1.set_xlabel("°C")
