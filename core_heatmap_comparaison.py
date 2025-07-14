@@ -72,10 +72,6 @@ def run_core_heatmap_comparaison():
         df1_aligned = df1.loc[common_index, common_columns]
         df2_aligned = df2.loc[common_index, common_columns]
 
-        # 🔁 Convert to hours after aligning
-        df1_aligned.index = (df1_aligned.index / 3600).round(2)
-        df2_aligned.index = (df2_aligned.index / 3600).round(2)
-
 
         if tr1_df1 is not None and tr1_df2 is not None:
             tr1_df1 = tr1_df1.loc[common_index]
@@ -93,6 +89,7 @@ def run_core_heatmap_comparaison():
 
         
         df_diff = df2_aligned - df1_aligned
+        df_diff.index = (df_diff.index / 3600).round(2)
 
         st.subheader("🧊 Temperature Difference Heatmap")
         fig = plt.figure(figsize=(16, 8))
