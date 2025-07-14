@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
+MINUTES_SMOOTHING = 5
 
 def extract_core_data(df):
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
@@ -27,7 +28,7 @@ def calculate_averages_over_time(core_df: pd.DataFrame) -> pd.DataFrame:
     cleaned_data = core_df.replace(0, np.nan)
 
     # Create a new column for minute-level buckets
-    cleaned_data['minute'] = (cleaned_data.index // 60).astype(int) * 60
+    cleaned_data['minute'] = (cleaned_data.index // MINUTES_SMOOTHING * 60).astype(int) * 60 * MINUTES_SMOOTHING
 
     # Compute the average per time row, excluding NaNs
     per_second_avg = cleaned_data.drop(columns='minute').mean(axis=1, skipna=True)
