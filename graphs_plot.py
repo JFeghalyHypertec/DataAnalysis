@@ -37,9 +37,30 @@ def get_time_series(df, parameter, file_name):
             temperature = pd.to_numeric(df.iloc[START_ROW:, col], errors='coerce')
             label = df.iloc[1, col]
 
-            plot_data = pd.DataFrame({'time': time / 3600, 'value': temperature}).dropna().iloc[2:]
-            plot_data = plot_data.sort_values(by='time')
-            plot_time_series(plot_data['time'], plot_data['value'], label, file_name)
+            # Create raw dataframe
+            data = pd.DataFrame({'time': time, 'value': temperature}).dropna().iloc[2:]
+
+            # Remove 0s from value column
+            data = data[data['value'] != 0]
+
+            # Bin time into 60-second intervals (as integers)
+            data['minute_bin'] = (data['time'] // 60).astype(int)
+
+            # Group by each minute and average the temperature
+            averaged_data = data.groupby('minute_bin').agg({
+                'time': 'mean',
+                'value': 'mean'
+            }).reset_index(drop=True)
+
+            # Convert time to hours
+            averaged_data['time'] = averaged_data['time'] / 3600
+
+            # Sort by time
+            averaged_data = averaged_data.sort_values(by='time')
+
+            # Plot
+            plot_time_series(averaged_data['time'], averaged_data['value'], label, file_name)
+
 
 def plot_core_temperature_dominance(df, file_name):
     core_indices = {df.iloc[1, i]: i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST}
