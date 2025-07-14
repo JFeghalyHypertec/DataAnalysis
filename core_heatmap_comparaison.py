@@ -71,10 +71,12 @@ def run_core_heatmap_comparaison():
 
         df1_aligned = df1.loc[common_index, common_columns]
         df2_aligned = df2.loc[common_index, common_columns]
-        
-        df1_aligned /= 3600  # Convert index to hours
-        df2_aligned /= 3600  # Convert index to hours
-        
+
+        # 🔁 Convert to hours after aligning
+        df1_aligned.index = (df1_aligned.index / 3600).round(2)
+        df2_aligned.index = (df2_aligned.index / 3600).round(2)
+
+
         if tr1_df1 is not None and tr1_df2 is not None:
             tr1_df1 = tr1_df1.loc[common_index]
             tr1_df2 = tr1_df2.loc[common_index]
