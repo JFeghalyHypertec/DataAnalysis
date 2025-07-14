@@ -18,7 +18,7 @@ def plot_time_series(time, temperature, label, file_name, time_range_min=DEFAULT
     ax.plot(time, temperature, marker='o')
     ax.set_xlabel("Time (hours)")
     ax.set_ylabel("Temperature (°C)")
-    ax.set_title(f"Time Series of {label} in file {file_name}\n Smoothing time: {time_range_min} minutes")
+    ax.set_title(f"Time Series of {label} in file {file_name}\n Smoothing time: {int(time_range_min)} minutes")
     ax.grid(True)
     st.pyplot(fig)
     buf = BytesIO()
