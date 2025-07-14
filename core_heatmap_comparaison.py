@@ -8,6 +8,7 @@ import os
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
+TR1 = "TR1 Temperature (System Board)"
 
 def extract_core_data(df):
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
@@ -55,6 +56,16 @@ def run_core_heatmap_comparaison():
 
         df1_aligned = df1.loc[common_index, common_columns]
         df2_aligned = df2.loc[common_index, common_columns]
+        
+        if TR1 in df1.columns and TR1 in df2.columns:
+            tr1_df1 = df1.loc[common_index, TR1]
+            tr1_df2 = df2.loc[common_index, TR1]
+            
+            df1_aligned = df1_aligned.subtract(tr1_df1, axis=0)
+            df2_aligned = df2_aligned.subtract(tr1_df2, axis=0)
+        else:
+            st.warning("⚠️ TR1 not found in at least one of the files. Skipping TR1 adjustment.")
+        
         df_diff = df2_aligned - df1_aligned
 
         st.subheader("🧊 Temperature Difference Heatmap")

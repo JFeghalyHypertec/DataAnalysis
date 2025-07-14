@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from io import StringIO, BytesIO
+from io import BytesIO
 from pathlib import Path
 import uuid
 
