@@ -10,7 +10,7 @@ import uuid
 START_ROW = 3
 CPU_TIME_SERIE_PLOT = ["CPU Package", "Core Max"]
 CORE_LIST = [f"Core {i}" for i in range(26)]
-TIME_RANGE = 5 * 60  # 5 minutes in seconds
+DEFAULT_TIME_RANGE_MIN = 5
 
 
 def plot_time_series(time, temperature, label, file_name):
@@ -32,7 +32,7 @@ def plot_time_series(time, temperature, label, file_name):
     )
     plt.close(fig)
 
-def get_time_series(df, parameter, file_name):
+def get_time_series(df, parameter, file_name, time_range_seconds=DEFAULT_TIME_RANGE_MIN * 60):
     for col in df.columns:
         if df.iloc[1, col] == parameter:
             time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
@@ -45,7 +45,15 @@ def get_time_series(df, parameter, file_name):
             data = data[data['value'] != 0]
 
             # Bin time into 60-second intervals (as integers)
-            data['minute_bin'] = (data['time'] // TIME_RANGE).astype(int)
+            if time_range_seconds > 0:
+                data['minute_bin'] = (data['time'] // time_range_seconds).astype(int)
+                averaged_data = data.groupby('minute_bin').agg({
+                    'time': 'mean',
+                    'value': 'mean'
+                }).reset_index(drop=True)
+            else:
+                averaged_data = data.copy()
+
 
             # Group by each minute and average the temperature
             averaged_data = data.groupby('minute_bin').agg({
@@ -106,6 +114,14 @@ def plot_core_temperature_dominance(df, file_name):
     
 def run_graphs_plot():
     st.title("Graphs Plot")
+    use_averaging = st.checkbox("🧮 Enable Averaging", value=True)
+
+    if use_averaging:
+        time_range_min = st.number_input("⏱️ Averaging Time Range (minutes)", min_value=1, max_value=60, value=5, step=1)
+        time_range_sec = time_range_min * 60
+    else:
+        time_range_sec = 0  # no averaging
+        
     uploaded_files = st.file_uploader("Upload CSV or Excel files", type=["csv", "xls", "xlsx"], accept_multiple_files=True)
 
     if uploaded_files:
@@ -124,7 +140,7 @@ def run_graphs_plot():
             st.subheader(f"Processing File: {file_name}")
             for parameter in CPU_TIME_SERIE_PLOT:
                 st.markdown(f"#### Time Series: {parameter}")
-                get_time_series(df, parameter, file_name)
+                get_time_series(df, parameter, file_name, time_range_sec)
                 time.sleep(0.5)
 
             st.markdown(f"#### Core Dominance: {file_name}")
