@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
-MINUTES_SMOOTHING = 10
+MINUTES_SMOOTHING = 15
 
 def extract_core_data(df):
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
