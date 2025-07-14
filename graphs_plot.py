@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from io import StringIO
+from io import StringIO, BytesIO
 from pathlib import Path
 
 START_ROW = 3
@@ -20,6 +20,15 @@ def plot_time_series(time, temperature, label, file_name):
     ax.set_title(f"Time Series of {label} in file {file_name}")
     ax.grid(True)
     st.pyplot(fig)
+    buf = BytesIO()
+    fig.savefig(buf, format="png")
+    st.download_button(
+        label=f"📥 Download {label} Time Series",
+        data=buf.getvalue(),
+        file_name=f"{file_name}_{label.replace(' ', '_')}_timeseries.png",
+        mime="image/png"
+    )
+    plt.close(fig)
 
 def get_time_series(df, parameter, file_name):
     for col in df.columns:
@@ -68,13 +77,25 @@ def plot_core_temperature_dominance(df, file_name):
     ax1.set_ylabel("Times Core was Max")
     ax1.set_title(f"Core Max Temperature Count (Histogram) of {file_name}")
     st.pyplot(fig1)
-
+    
+    buf1 = BytesIO()
+    fig1.savefig(buf1, format="png")
+    st.download_button("📥 Download Histogram", buf1.getvalue(),
+                       file_name=f"{file_name}_core_histogram.png", mime="image/png")
+    plt.close(fig1)
+    
     fig2, ax2 = plt.subplots(figsize=(8, 8))
     ax2.pie(percentages, labels=labels, autopct="%1.1f%%", startangle=90, counterclock=False)
     ax2.set_title(f"Core Max Temperature Percentage Dominance (Pie Chart) of {file_name}")
     ax2.axis("equal")
     st.pyplot(fig2)
 
+    buf2 = BytesIO()
+    fig2.savefig(buf2, format="png")
+    st.download_button("📥 Download Pie Chart", buf2.getvalue(),
+                       file_name=f"{file_name}_core_piechart.png", mime="image/png")
+    plt.close(fig2)
+    
 def run_graphs_plot():
     st.title("Graphs Plot")
     uploaded_files = st.file_uploader("Upload CSV or Excel files", type=["csv", "xls", "xlsx"], accept_multiple_files=True)

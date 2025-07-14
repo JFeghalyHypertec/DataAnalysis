@@ -29,7 +29,8 @@ def plot_heatmap(core_df, file_path):
 
     ax0 = fig.add_subplot(spec[0])
     sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
-    ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_path}")
+    file_name = os.path.basename(file_path.name)
+    ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_name}")
     ax0.set_xlabel("Time (s)")
     ax0.set_ylabel("CPU Cores")
 
@@ -69,7 +70,7 @@ def run_core_heatmap_plot():
             core_df = extract_core_data(df)
             fig = plot_heatmap(core_df, uploaded_file)
             st.pyplot(fig)
-
+    
             # Save download
             buf = BytesIO()
             fig.savefig(buf, format="png")
