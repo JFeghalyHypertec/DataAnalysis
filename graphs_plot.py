@@ -15,7 +15,7 @@ CORE_LIST = [f"Core {i}" for i in range(26)]
 def plot_time_series(time, temperature, label, file_name):
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.plot(time, temperature, marker='o')
-    ax.set_xlabel("Time (s)")
+    ax.set_xlabel("Time (hours)")
     ax.set_ylabel("Temperature (°C)")
     ax.set_title(f"Time Series of {label} in file {file_name}")
     ax.grid(True)
@@ -37,7 +37,7 @@ def get_time_series(df, parameter, file_name):
             temperature = pd.to_numeric(df.iloc[START_ROW:, col], errors='coerce')
             label = df.iloc[1, col]
 
-            plot_data = pd.DataFrame({'time': time, 'value': temperature}).dropna().iloc[2:]
+            plot_data = pd.DataFrame({'time': time / 3600, 'value': temperature}).dropna().iloc[2:]
             plot_data = plot_data.sort_values(by='time')
             plot_time_series(plot_data['time'], plot_data['value'], label, file_name)
 
@@ -68,8 +68,6 @@ def plot_core_temperature_dominance(df, file_name):
 
     labels = list(filtered_counts.keys())
     counts = list(filtered_counts.values())
-    total = sum(counts)
-    percentages = [c / total * 100 for c in counts]
 
     fig1, ax1 = plt.subplots(figsize=(12, 5))
     ax1.bar(labels, counts)
@@ -83,18 +81,6 @@ def plot_core_temperature_dominance(df, file_name):
     st.download_button("📥 Download Histogram", buf1.getvalue(),
                        file_name=f"{file_name}_core_histogram.png", mime="image/png")
     plt.close(fig1)
-    
-    fig2, ax2 = plt.subplots(figsize=(8, 8))
-    ax2.pie(percentages, labels=labels, autopct="%1.1f%%", startangle=90, counterclock=False)
-    ax2.set_title(f"Core Max Temperature Percentage Dominance (Pie Chart) of {file_name}")
-    ax2.axis("equal")
-    st.pyplot(fig2)
-
-    buf2 = BytesIO()
-    fig2.savefig(buf2, format="png")
-    st.download_button("📥 Download Pie Chart", buf2.getvalue(),
-                       file_name=f"{file_name}_core_piechart.png", mime="image/png")
-    plt.close(fig2)
     
 def run_graphs_plot():
     st.title("Graphs Plot")
