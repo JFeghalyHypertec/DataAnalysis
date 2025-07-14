@@ -108,7 +108,7 @@ def run_core_heatmap_comparaison():
         overall_avg = averages.mean()
         ax1 = fig.add_subplot(spec[1])
         colors = ['red' if val > 0 else 'blue' for val in averages.values]
-        bars = ax1.barh(averages.index, averages.values, color='gray')
+        bars = ax1.barh(averages.index, averages.values, color=colors)
         ax1.set_title("Avg Temp Difference per Core")
         ax1.set_xlim(averages.min() - 5, averages.max() + 5)
         ax1.set_xlabel("°C")
