@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import streamlit as st
 from io import BytesIO
-import os
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
@@ -29,7 +28,7 @@ def plot_heatmap(core_df, file_path):
 
     ax0 = fig.add_subplot(spec[0])
     sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
-    file_name = os.path.basename(file_path.name)
+    file_name = file_path.name
     ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_name}")
     ax0.set_xlabel("Time (s)")
     ax0.set_ylabel("CPU Cores")

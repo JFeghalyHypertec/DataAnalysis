@@ -4,7 +4,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
 from io import BytesIO
-import os
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
@@ -50,8 +49,8 @@ def run_core_heatmap_comparaison():
         return
     
     try:
-        file1_name = os.path.basename(file1.name)
-        file2_name = os.path.basename(file2.name)
+        file1_name = file1.name
+        file2_name = file2.name
 
         df1 = pd.read_csv(file1, header=None) if file1.name.endswith(".csv") else pd.read_excel(file1, header=None)
         df2 = pd.read_csv(file2, header=None) if file2.name.endswith(".csv") else pd.read_excel(file2, header=None)
