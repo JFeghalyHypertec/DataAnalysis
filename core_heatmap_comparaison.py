@@ -41,8 +41,7 @@ def extract_core_data(df):
 def run_core_heatmap_comparaison():
     file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
     file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv", "xls", "xlsx"], key="file2")
-    st.info("ℹ️ **Recommended:** Upload the **hottest test** as the **second file** and the **coldest test** as the **first file**.\nThis ensures that temperature differences are positive when cooling is effective.")
-
+    
     if not file1 or not file2:
         return
     
