@@ -96,7 +96,7 @@ def run_core_heatmap_comparaison():
         spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])
         
         ax0 = fig.add_subplot(spec[0])
-        sns.heatmap(df_diff.T, cmap="RdBu", center=0, cbar_kws={'label': 'ΔTemp (°C)'}, ax=ax0)
+        sns.heatmap(df_diff.T, cmap="coolwarm", center=0, cbar_kws={'label': 'ΔTemp (°C)'}, ax=ax0)
 
         title = f"Difference Heatmap ({file2_name} - {file1_name})\nAveraged every 60 seconds"
         ax0.set_title(title)
