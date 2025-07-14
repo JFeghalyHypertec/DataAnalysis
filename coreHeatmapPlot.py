@@ -67,7 +67,7 @@ def run_core_heatmap_plot():
             df = pd.read_excel(uploaded_file, header=None)
         try:
             core_df = extract_core_data(df)
-            fig = plot_heatmap(core_df)
+            fig = plot_heatmap(core_df, uploaded_file)
             st.pyplot(fig)
 
             # Save download

@@ -101,7 +101,10 @@ def calculate_metrics(df):
 def run_excel_CPU_calculations():
     st.title("📊 Excel CPU Performance Metrics Analyzer")
     uploaded_files = st.file_uploader("Upload one or more CSV or Excel files", type=["csv", "xls", "xlsx"], accept_multiple_files=True)
-
+    
+    if not uploaded_files:
+        return
+    
     if uploaded_files:
         combined_rows = [["File Name"] + PARAMETERS, [""] + UNITS]
 

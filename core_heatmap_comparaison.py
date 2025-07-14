@@ -26,6 +26,14 @@ def extract_core_data(df):
 def run_core_heatmap_comparaison():
     file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
     file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv", "xls", "xlsx"], key="file2")
+    
+    if not file1 or not file2:
+        return
+    
+    if file1.name == file2.name:
+        st.error("❗ Please upload two different files for comparison.")
+        return
+    
     try:
         file1_name = os.path.basename(file1.name)
         file2_name = os.path.basename(file2.name)
@@ -40,8 +48,8 @@ def run_core_heatmap_comparaison():
         t1 = df1.index.max()
         t2 = df2.index.max()
         if abs(t1 - t2) > 60:
-            st.warning(f"❗ Time misalignment detected.\nLast timestamp difference: {abs(t1 - t2)} seconds")
-
+            st.error(f"❗ Time misalignment detected.\nLast timestamp difference: {abs(t1 - t2)} seconds")
+            return
         common_index = df1.index.intersection(df2.index)
         common_columns = df1.columns.intersection(df2.columns)
 
