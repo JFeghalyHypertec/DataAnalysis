@@ -71,10 +71,6 @@ def run_core_heatmap_comparaison():
         df1_aligned = df1.loc[common_index, common_columns]
         df2_aligned = df2.loc[common_index, common_columns]
         
-        df1_aligned.index /= 3600
-        df2_aligned.index /= 3600
-
-        
         if tr1_df1 is not None and tr1_df2 is not None:
             tr1_df1 = tr1_df1.loc[common_index]
             tr1_df2 = tr1_df2.loc[common_index]
@@ -101,14 +97,13 @@ def run_core_heatmap_comparaison():
 
         title = f"Difference Heatmap ({file2_name} - {file1_name})\nAveraged every 60 seconds"
         ax0.set_title(title)
-        ax0.set_xlabel("Time (hours)")
+        ax0.set_xlabel("Time Bucket (s)")
         ax0.set_ylabel("CPU Cores")
         
         averages = df_diff[df_diff != 0].mean()
         overall_avg = averages.mean()
         ax1 = fig.add_subplot(spec[1])
-        colors = ['red' if val > 0 else 'blue' for val in averages.values]
-        bars = ax1.barh(averages.index, averages.values, color=colors)
+        bars = ax1.barh(averages.index, averages.values, color='gray')
         ax1.set_title("Avg Temp Difference per Core")
         ax1.set_xlim(averages.min() - 5, averages.max() + 5)
         ax1.set_xlabel("°C")
