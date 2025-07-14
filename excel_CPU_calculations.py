@@ -131,7 +131,7 @@ def run_excel_CPU_calculations():
 
         # Convert to Excel for download
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             pd.DataFrame(combined_rows).to_excel(writer, index=False, header=False)
         output.seek(0)
 
