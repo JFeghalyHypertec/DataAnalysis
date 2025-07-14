@@ -3,6 +3,7 @@ from graphs_plot import run_graphs_plot
 from coreHeatmapPlot import run_core_heatmap_plot
 from core_heatmap_comparaison import run_core_heatmap_comparaison
 from excel_CPU_calculations import run_excel_CPU_calculations
+from core_heatmap_comparaison import run_core_percentage_difference
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
@@ -14,6 +15,7 @@ if "active_tool" not in st.session_state:
 
 col1, col2 = st.columns(2)
 col3, col4 = st.columns(2)
+col5, col6 = st.columns(2)
 
 with col1:
     if st.button("📊 Excel CPU Calculations"):
@@ -31,6 +33,9 @@ with col4:
     if st.button("🔥 Core Difference Heatmap"):
         st.session_state.active_tool = "Comparison"
 
+with col5:
+    if st.button("Percentage difference"):
+        st.session_state.active_tool = "Percentage Difference"
 st.divider()
 
 # Upload and execute based on selection
@@ -49,3 +54,7 @@ elif st.session_state.active_tool == "Heatmap":
 elif st.session_state.active_tool == "Comparison":
     st.subheader("🔥 Core Difference Heatmap")
     run_core_heatmap_comparaison()
+
+elif st.session_state.active_tool == "Percentage Difference":
+    st.subheader("Percentage Difference Tool")
+    run_core_percentage_difference()
