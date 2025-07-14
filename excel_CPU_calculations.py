@@ -8,6 +8,7 @@ How to add a new Paramter to the returned CSV file:
    Example: safe_round(get_average_per_parameter(df, WATER_TEMP))
    
 """
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -109,7 +110,7 @@ def run_excel_CPU_calculations():
         combined_rows = [["File Name"] + PARAMETERS, [""] + UNITS]
 
         for uploaded in uploaded_files:
-            file_name = uploaded.name
+            file_name = os.path.splitext(os.path.basename(uploaded.name))[0]
             ext = file_name.split(".")[-1].lower()
 
             try:
