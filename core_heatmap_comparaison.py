@@ -11,18 +11,32 @@ CORE_LIST = [f"Core {i}" for i in range(26)]
 TR1 = "TR1 Temperature (System Board)"
 
 def extract_core_data(df):
-    core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     time_col = 0
     time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
+
+    # Extract core temperature columns
+    core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
     core_data.columns = [df.iloc[1, i] for i in core_cols]
-
     core_data = core_data.replace(0, np.nan)
-    core_data['time_bucket'] = (core_data.index // 60) * 60
-    grouped = core_data.groupby('time_bucket').mean()
 
-    return grouped.dropna(axis=1, how='all')
+    # Extract TR1 column
+    tr1_col = next((i for i in range(df.shape[1]) if df.iloc[1, i] == TR1), None)
+    if tr1_col is not None:
+        tr1_data = pd.to_numeric(df.iloc[START_ROW:, tr1_col], errors='coerce')
+        tr1_data.index = time
+        tr1_data = tr1_data.replace(0, np.nan)
+        tr1_grouped = tr1_data.groupby((tr1_data.index // 60) * 60).mean()
+    else:
+        tr1_grouped = None
+
+    # Group core data
+    core_data['time_bucket'] = (core_data.index // 60) * 60
+    grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
+
+    return grouped_core, tr1_grouped
+
 
 def run_core_heatmap_comparaison():
     file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
@@ -42,8 +56,8 @@ def run_core_heatmap_comparaison():
         df1 = pd.read_csv(file1, header=None) if file1.name.endswith(".csv") else pd.read_excel(file1, header=None)
         df2 = pd.read_csv(file2, header=None) if file2.name.endswith(".csv") else pd.read_excel(file2, header=None)
 
-        df1 = extract_core_data(df1)
-        df2 = extract_core_data(df2)
+        df1, tr1_df1 = extract_core_data(df1)
+        df2, tr1_df2 = extract_core_data(df2)
 
         # Validate time alignment
         t1 = df1.index.max()
@@ -57,14 +71,15 @@ def run_core_heatmap_comparaison():
         df1_aligned = df1.loc[common_index, common_columns]
         df2_aligned = df2.loc[common_index, common_columns]
         
-        if TR1 in df1.columns and TR1 in df2.columns:
-            tr1_df1 = df1.loc[common_index, TR1]
-            tr1_df2 = df2.loc[common_index, TR1]
-            
+        if tr1_df1 is not None and tr1_df2 is not None:
+            tr1_df1 = tr1_df1.loc[common_index]
+            tr1_df2 = tr1_df2.loc[common_index]
+
             df1_aligned = df1_aligned.subtract(tr1_df1, axis=0)
             df2_aligned = df2_aligned.subtract(tr1_df2, axis=0)
         else:
             st.warning("⚠️ TR1 not found in at least one of the files. Skipping TR1 adjustment.")
+
         
         df_diff = df2_aligned - df1_aligned
 
