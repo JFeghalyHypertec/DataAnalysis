@@ -67,7 +67,7 @@ def run_core_heatmap_plot():
 
     if uploaded_files:
         for uploaded_file in uploaded_files:
-            file_name = os.path.basename(uploaded_file.name)
+            file_name = uploaded_file.name
 
             try:
                 if uploaded_file.name.endswith('.csv'):
@@ -76,7 +76,7 @@ def run_core_heatmap_plot():
                     df = pd.read_excel(uploaded_file, header=None)
 
                 core_df = extract_core_data(df)
-                fig = plot_heatmap(core_df, file_name)
+                fig = plot_heatmap(core_df, uploaded_file)
 
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
                 st.pyplot(fig)
