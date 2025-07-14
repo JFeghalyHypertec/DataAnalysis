@@ -28,7 +28,7 @@ def calculate_averages_over_time(core_df: pd.DataFrame) -> pd.DataFrame:
     cleaned_data = core_df.replace(0, np.nan)
 
     # Create a new column for minute-level buckets
-    cleaned_data['minute'] = (cleaned_data.index // MINUTES_SMOOTHING * 60).astype(int) * 60 * MINUTES_SMOOTHING
+    cleaned_data['minute'] = (cleaned_data.index // (MINUTES_SMOOTHING * 60)).astype(int) * 60 * MINUTES_SMOOTHING
 
     # Compute the average per time row, excluding NaNs
     per_second_avg = cleaned_data.drop(columns='minute').mean(axis=1, skipna=True)
