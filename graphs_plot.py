@@ -5,6 +5,7 @@ import numpy as np
 import time
 from io import StringIO, BytesIO
 from pathlib import Path
+import uuid
 
 START_ROW = 3
 
@@ -27,7 +28,7 @@ def plot_time_series(time, temperature, label, file_name):
         data=buf.getvalue(),
         file_name=f"{file_name}_{label.replace(' ', '_')}_timeseries.png",
         mime="image/png",
-        key=f"{file_name}_{label}_download"
+        key=f"{file_name}_{label}_download_{uuid.uuid4()}"  # Unique key to avoid conflicts
     )
     plt.close(fig)
 
