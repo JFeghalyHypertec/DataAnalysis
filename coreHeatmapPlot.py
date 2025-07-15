@@ -94,9 +94,9 @@ def build_summary_table(df, core_df, file_path):
     occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), None)
 
     # ── convert to strings, “NA” if missing ────────────────────────────────────
-    wf_str  = f"{water_flow:.2f}" if not np.isnan(water_flow) else "NA"     # --
-    cpu_str = f"{cpu_package:.2f}" if not np.isnan(cpu_package) else "NA"   # --
-    avg_str = f"{avg_core_tmp:.2f}"                                          # always exists
+    wf_str  = f"{water_flow:.2f} L/h" if not np.isnan(water_flow) else "NA"     # --
+    cpu_str = f"{cpu_package:.2f} °C" if not np.isnan(cpu_package) else "NA"   # --
+    avg_str = f"{avg_core_tmp:.2f} °C"                                          # always exists
     plate   = plate or "NA"                                                  # --
     occt_version = occt_version or "NA"                                      # --
 
