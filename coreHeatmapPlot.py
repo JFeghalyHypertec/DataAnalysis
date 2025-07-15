@@ -20,22 +20,26 @@ def extract_core_data(df):
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
-def plot_heatmap(core_df, file_path):
+
+def plot_heatmap(core_df, file_path, summary_table=None):
     averages = core_df[core_df != 0].mean().round(2)
     overall_avg = averages.mean().round(2)
 
-    fig = plt.figure(figsize=(16, 8))
-    spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])
+    # Increased height for the embedded table
+    fig = plt.figure(figsize=(16, 10))
+    spec = gridspec.GridSpec(ncols=2, nrows=2, width_ratios=[4, 1], height_ratios=[4, 1])
 
-    ax0 = fig.add_subplot(spec[0])
+    # Heatmap
+    ax0 = fig.add_subplot(spec[0, 0])
     sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
     file_name = file_path.name
-    ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_name}")
     core_df.index /= 3600  # Convert index to hours
+    ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_name}")
     ax0.set_xlabel("Time (hours)")
     ax0.set_ylabel("CPU Cores")
 
-    ax1 = fig.add_subplot(spec[1])
+    # Bar Chart
+    ax1 = fig.add_subplot(spec[0, 1])
     bars = ax1.barh(averages.index, averages.values, color='gray')
     ax1.set_title("Avg Temp per Core")
     ax1.set_xlim(averages.min() - 5, averages.max() + 5)
@@ -54,8 +58,21 @@ def plot_heatmap(core_df, file_path):
         fontweight='bold',
         bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='lightyellow')
     )
+
+    # Summary Table
+    ax2 = fig.add_subplot(spec[1, :])
+    ax2.axis("off")
+    if summary_table is not None:
+        cell_text = summary_table.values
+        col_labels = summary_table.columns
+        table = ax2.table(cellText=cell_text, colLabels=col_labels, cellLoc='center', loc='center')
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.2, 1.2)
+
     plt.tight_layout()
     return fig
+
 
 def build_summary_table(df, core_df, file_path):
     """Return a 1-row DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
@@ -110,13 +127,16 @@ def run_core_heatmap_plot():
                     df = pd.read_excel(uploaded_file, header=None)
 
                 core_df = extract_core_data(df)
-                fig = plot_heatmap(core_df, uploaded_file)
+                
 
                 
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
-                st.pyplot(fig)
+                
                 summary = build_summary_table(df, core_df, uploaded_file)
+                fig = plot_heatmap(core_df, uploaded_file)
                 st.table(summary)
+                st.pyplot(fig)
+                
 
                 # Save button with dynamic filename
                 buf = BytesIO()
