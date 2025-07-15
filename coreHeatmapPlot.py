@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import streamlit as st
 from io import BytesIO
+from pathlib import Path
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
@@ -56,6 +57,39 @@ def plot_heatmap(core_df, file_path):
     plt.tight_layout()
     return fig
 
+
+def build_summary_table(df, core_df, file_path):
+    """Return a pandas DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
+    # ── numeric metrics ──────────────────────────────────────────────────────────
+    def _col_mean(label_keyword):
+        cols = [i for i in range(df.shape[1])
+                if isinstance(df.iloc[1, i], str) and label_keyword in df.iloc[1, i]]
+        if not cols:
+            return np.nan
+        vals = df.iloc[START_ROW:, cols].apply(pd.to_numeric, errors="coerce")
+        return vals.replace(0, np.nan).mean().mean()   # grand-mean of those cols
+
+    water_flow   = _col_mean("Water Flow")
+    cpu_package  = _col_mean("CPU Package")
+    avg_core_tmp = core_df[core_df != 0].mean().mean()
+
+    # ── text metrics from parent-folder name  (e.g. “AluPlate-OCCT11”) ───────────
+    parent_name = Path(file_path.name).parent.name      # works if sub-folders kept in name
+    parts = parent_name.split("-") if parent_name else []
+    plate        = parts[0] if parts else "Unknown"
+    occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), "Unknown")
+
+    # build 2-row table (header row + one data row) → 5 columns
+    columns = ["Water Flow", "CPU Package", "Overall Avg Core", "Plate", "OCCT Version"]
+    values  = [f"{water_flow:.2f}" if not np.isnan(water_flow) else "N/A",
+               f"{cpu_package:.2f}" if not np.isnan(cpu_package) else "N/A",
+               f"{avg_core_tmp:.2f}",
+               plate, occt_version]
+
+    summary_df = pd.DataFrame([values], columns=columns)
+    return summary_df
+
+
 def run_core_heatmap_plot():
     st.header("🔍 Core Heatmap Plot")
 
@@ -78,9 +112,12 @@ def run_core_heatmap_plot():
                 core_df = extract_core_data(df)
                 fig = plot_heatmap(core_df, uploaded_file)
 
+                
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
                 st.pyplot(fig)
-
+                summary = build_summary_table(df, core_df, uploaded_file)
+                st.table(summary)
+                
                 # Save button with dynamic filename
                 buf = BytesIO()
                 fig.savefig(buf, format="png")
