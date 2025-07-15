@@ -15,6 +15,7 @@ def extract_core_data(df):
     if not core_cols:
         raise ValueError("No core temperature columns found.")
     time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
+    time = time - time.iloc[0]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
     core_data.columns = [df.iloc[1, i] for i in core_cols]
@@ -22,8 +23,8 @@ def extract_core_data(df):
 
 
 def plot_heatmap(core_df, file_path, summary_table=None):
-    averages = core_df[core_df != 0].mean().round(2)
-    overall_avg = averages.mean().round(2)
+    averages = core_df[core_df != 0].mean()
+    overall_avg = averages.mean()
 
     # Increased height for the embedded table
     fig = plt.figure(figsize=(16, 10))
