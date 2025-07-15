@@ -14,9 +14,8 @@ st.write("Select a tool below to begin:")
 if "active_tool" not in st.session_state:
     st.session_state.active_tool = None
 
-col1, col2 = st.columns(2)
-col3, col4 = st.columns(2)
-col5, col6 = st.columns(2)
+col1, col2,  col3 = st.columns(3)
+col4, col5, col6 = st.columns(3)
 
 with col1:
     if st.button("📊 Excel CPU Calculations"):
@@ -41,6 +40,7 @@ with col5:
 with col6:
     if st.button("🧩 Core Correlation Matrix"):
         st.session_state.active_tool = "Correlation Matrix"
+        
 st.divider()
 
 # Upload and execute based on selection
