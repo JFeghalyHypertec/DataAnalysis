@@ -128,12 +128,9 @@ def run_core_heatmap_plot():
 
                 core_df = extract_core_data(df)
                 
-
-                
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
-                
                 summary = build_summary_table(df, core_df, uploaded_file)
-                fig = plot_heatmap(core_df, uploaded_file)
+                fig = plot_heatmap(core_df, uploaded_file, summary_table=summary)
                 st.pyplot(fig)
                 st.table(summary)
                 
