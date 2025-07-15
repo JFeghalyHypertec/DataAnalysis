@@ -5,6 +5,7 @@ from core_heatmap_comparaison import run_core_heatmap_comparaison
 from excel_CPU_calculations import run_excel_CPU_calculations
 from core_percentage_difference import run_core_percentage_difference
 from core_correlation_matrix import run_core_correlation_matrix
+from core_clustering import run_core_clustering
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
@@ -16,6 +17,7 @@ if "active_tool" not in st.session_state:
 
 col1, col2,  col3 = st.columns(3)
 col4, col5, col6 = st.columns(3)
+col7 = st.columns(1)
 
 with col1:
     if st.button("📊 Excel CPU Calculations"):
@@ -40,7 +42,10 @@ with col5:
 with col6:
     if st.button("🧩 Core Correlation Matrix"):
         st.session_state.active_tool = "Correlation Matrix"
-        
+
+with col7:
+    if st.button("🌀 Core Clustering"):
+        st.session_state.active_tool = "Clustering"
 st.divider()
 
 # Upload and execute based on selection
@@ -67,3 +72,7 @@ elif st.session_state.active_tool == "Percentage Difference":
 elif st.session_state.active_tool == "Correlation Matrix":
     st.subheader("🧩 Core Correlation Matrix")
     run_core_correlation_matrix()
+    
+elif st.session_state.active_tool == "Clustering":
+    st.subheader("🌀 Core Clustering")
+    run_core_clustering()
