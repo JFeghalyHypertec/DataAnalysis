@@ -15,9 +15,9 @@ def extract_core_data(df):
     if not core_cols:
         raise ValueError("No core temperature columns found.")
     time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
-    time = time - time.iloc[0]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
+
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
