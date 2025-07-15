@@ -57,37 +57,37 @@ def plot_heatmap(core_df, file_path):
     plt.tight_layout()
     return fig
 
-
 def build_summary_table(df, core_df, file_path):
-    """Return a pandas DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
-    # ── numeric metrics ──────────────────────────────────────────────────────────
+    """Return a 1-row DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
     def _col_mean(label_keyword):
         cols = [i for i in range(df.shape[1])
                 if isinstance(df.iloc[1, i], str) and label_keyword in df.iloc[1, i]]
         if not cols:
             return np.nan
         vals = df.iloc[START_ROW:, cols].apply(pd.to_numeric, errors="coerce")
-        return vals.replace(0, np.nan).mean().mean()   # grand-mean of those cols
+        return vals.replace(0, np.nan).mean().mean()
 
     water_flow   = _col_mean("Water Flow")
     cpu_package  = _col_mean("CPU Package")
     avg_core_tmp = core_df[core_df != 0].mean().mean()
 
-    # ── text metrics from parent-folder name  (e.g. “AluPlate-OCCT11”) ───────────
-    parent_name = Path(file_path.name).parent.name      # works if sub-folders kept in name
+    parent_name = Path(file_path.name).parent.name
     parts = parent_name.split("-") if parent_name else []
-    plate        = parts[0] if parts else "Unknown"
-    occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), "Unknown")
+    plate        = parts[0] if parts else None
+    occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), None)
 
-    # build 2-row table (header row + one data row) → 5 columns
+    # ── convert to strings, “NA” if missing ────────────────────────────────────
+    wf_str  = f"{water_flow:.2f}" if not np.isnan(water_flow) else "NA"     # --
+    cpu_str = f"{cpu_package:.2f}" if not np.isnan(cpu_package) else "NA"   # --
+    avg_str = f"{avg_core_tmp:.2f}"                                          # always exists
+    plate   = plate or "NA"                                                  # --
+    occt_version = occt_version or "NA"                                      # --
+
     columns = ["Water Flow", "CPU Package", "Overall Avg Core", "Plate", "OCCT Version"]
-    values  = [f"{water_flow:.2f}" if not np.isnan(water_flow) else "N/A",
-               f"{cpu_package:.2f}" if not np.isnan(cpu_package) else "N/A",
-               f"{avg_core_tmp:.2f}",
-               plate, occt_version]
+    values  = [wf_str, cpu_str, avg_str, plate, occt_version]
 
-    summary_df = pd.DataFrame([values], columns=columns)
-    return summary_df
+    return pd.DataFrame([values], columns=columns)
+
 
 
 def run_core_heatmap_plot():
@@ -117,7 +117,7 @@ def run_core_heatmap_plot():
                 st.pyplot(fig)
                 summary = build_summary_table(df, core_df, uploaded_file)
                 st.table(summary)
-                
+
                 # Save button with dynamic filename
                 buf = BytesIO()
                 fig.savefig(buf, format="png")
