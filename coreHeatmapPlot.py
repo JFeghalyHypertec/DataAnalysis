@@ -20,8 +20,8 @@ def extract_core_data(df):
     return core_data
 
 def plot_heatmap(core_df, file_path):
-    averages = core_df[core_df != 0].mean()
-    overall_avg = averages.mean()
+    averages = core_df[core_df != 0].mean().round(2)
+    overall_avg = averages.mean().round(2)
 
     fig = plt.figure(figsize=(16, 8))
     spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])

@@ -103,8 +103,8 @@ def run_core_heatmap_comparaison():
         ax0.set_xlabel("Time (hours)")
         ax0.set_ylabel("CPU Cores")
         
-        averages = df_diff[df_diff != 0].mean()
-        overall_avg = averages.mean()
+        averages = df_diff[df_diff != 0].mean().round(2)
+        overall_avg = averages.mean().round(2)
         ax1 = fig.add_subplot(spec[1])
         colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in averages.values]
         bars = ax1.barh(averages.index, averages.values, color=colors)
