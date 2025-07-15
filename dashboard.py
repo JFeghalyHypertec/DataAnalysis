@@ -34,7 +34,7 @@ with col4:
         st.session_state.active_tool = "Comparison"
 
 with col5:
-    if st.button("Percentage difference"):
+    if st.button("📉 Percentage difference"):
         st.session_state.active_tool = "Percentage Difference"
 st.divider()
 
@@ -56,5 +56,5 @@ elif st.session_state.active_tool == "Comparison":
     run_core_heatmap_comparaison()
 
 elif st.session_state.active_tool == "Percentage Difference":
-    st.subheader("Percentage Difference Tool")
+    st.subheader("📉 Percentage Difference")
     run_core_percentage_difference()
