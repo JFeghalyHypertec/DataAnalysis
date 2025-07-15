@@ -32,9 +32,9 @@ def plot_heatmap(core_df, file_path, summary_table=None):
 
     # Heatmap
     ax0 = fig.add_subplot(spec[0, 0])
+    core_df.index /= 3600  # Convert index to hours
     sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
     file_name = file_path.name
-    core_df.index /= 3600  # Convert index to hours
     ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_name}")
     ax0.set_xlabel("Time (hours)")
     ax0.set_ylabel("CPU Cores")
