@@ -134,10 +134,9 @@ def run_core_heatmap_plot():
                 
                 summary = build_summary_table(df, core_df, uploaded_file)
                 fig = plot_heatmap(core_df, uploaded_file)
-                st.table(summary)
                 st.pyplot(fig)
+                st.table(summary)
                 
-
                 # Save button with dynamic filename
                 buf = BytesIO()
                 fig.savefig(buf, format="png")
