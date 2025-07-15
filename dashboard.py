@@ -17,7 +17,7 @@ if "active_tool" not in st.session_state:
 
 col1, col2,  col3 = st.columns(3)
 col4, col5, col6 = st.columns(3)
-col7 = st.columns(1)
+col7 = st.columns(3)[0]  # Single column for the last button
 
 with col1:
     if st.button("📊 Excel CPU Calculations"):
