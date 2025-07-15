@@ -21,7 +21,6 @@ def extract_core_data(df):
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
-
 def plot_heatmap(core_df, file_path, summary_table=None):
     averages = core_df[core_df != 0].mean()
     overall_avg = averages.mean()
@@ -74,7 +73,6 @@ def plot_heatmap(core_df, file_path, summary_table=None):
     plt.tight_layout()
     return fig
 
-
 def build_summary_table(df, core_df, file_path):
     """Return a 1-row DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
     def _col_mean(label_keyword):
@@ -105,8 +103,6 @@ def build_summary_table(df, core_df, file_path):
     values  = [wf_str, cpu_str, avg_str, plate, occt_version]
 
     return pd.DataFrame([values], columns=columns)
-
-
 
 def run_core_heatmap_plot():
     st.header("🔍 Core Heatmap Plot")
