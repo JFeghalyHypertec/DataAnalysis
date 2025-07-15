@@ -68,7 +68,7 @@ def plot_percentage_difference(averages: pd.DataFrame, file_name: str) -> plt.Fi
 
 
 def run_core_percentage_difference():
-    st.header("Percentage Difference Tool")
+    st.header("📉 Percentage Difference")
 
     uploaded_files = st.file_uploader(
         "Upload one or more CSV or Excel files",
