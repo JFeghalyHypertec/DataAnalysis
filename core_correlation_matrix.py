@@ -26,7 +26,7 @@ def extract_core_data(df):
 def generate_core_correlation_plot(core_df, filename):
     corr = core_df.corr()
     fig, ax = plt.subplots(figsize=(10, 8))
-    formatted_corr = corr.applymap(lambda x: f"{x:.1g}" if pd.notnull(x) else "")
+    formatted_corr = corr.round(1).astype(str)
     sns.heatmap(corr, annot=formatted_corr, fmt="", cmap='coolwarm',
                 vmin=-1, vmax=1, square=True,
                 cbar_kws={'label': 'Correlation Coefficient'}, ax=ax)
