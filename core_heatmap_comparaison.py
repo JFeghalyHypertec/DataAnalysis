@@ -93,27 +93,14 @@ def run_core_heatmap_comparaison():
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
 
     # Build comparison table
-    cols = ["", "Plate", "OCCT Version",
-            f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
+    cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
     data = [
-        [file1_name, plate1, occt1,
-         round(cpu1_avg,2) if pd.notnull(cpu1_avg) else "NA",
-         round(overall1,2) if pd.notnull(overall1) else "NA",
-         round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
-
-        [file2_name, plate2, occt2,
-         round(cpu2_avg,2) if pd.notnull(cpu2_avg) else "NA",
-         round(overall2,2) if pd.notnull(overall2) else "NA",
-         round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
-
-        ["File2 - File1", "", "",
-         round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA",
-         round(overall_diff,2) if pd.notnull(overall_diff) else "NA",
-         round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
+        [file1_name, plate1, occt1, round(cpu1_avg,2) if pd.notnull(cpu1_avg) else "NA", round(overall1,2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
+        [file2_name, plate2, occt2, round(cpu2_avg,2) if pd.notnull(cpu2_avg) else "NA", round(overall2,2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
+        ["File2 - File1", "", "", round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA", round(overall_diff,2) if pd.notnull(overall_diff) else "NA", round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
     ]
     summary_df = pd.DataFrame(data, columns=cols)
     st.subheader("📋 Comparison Summary")
-    st.table(summary_df)
 
     # Align time and columns
     t1, t2 = core1.index.max(), core2.index.max()
@@ -133,9 +120,9 @@ def run_core_heatmap_comparaison():
     df_diff.index = (df_diff.index/3600).round(2)
 
     # Plot
-    fig = plt.figure(figsize=(16,8))
-    spec = gridspec.GridSpec(1,2, width_ratios=[4,1])
-    ax0 = fig.add_subplot(spec[0])
+    fig = plt.figure(figsize=(16,12))
+    spec = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[4,1])
+    ax0 = fig.add_subplot(spec[0,0])
     sns.heatmap(df_diff.T, cmap="coolwarm", center=0, cbar_kws={'label':'ΔTemp (°C)'}, ax=ax0)
     ax0.set_title(f"Diff Heatmap: {file2_name} - {file1_name}")
     ax0.set_xlabel("Time (h)")
@@ -143,7 +130,7 @@ def run_core_heatmap_comparaison():
 
     avgs = df_diff[df_diff!=0].mean().round(2)
     overall = avgs.mean().round(2)
-    ax1 = fig.add_subplot(spec[1])
+    ax1 = fig.add_subplot(spec[0,1])
     colors = ['red' if x>0 else 'blue' if x<0 else 'gray' for x in avgs.values]
     bars = ax1.barh(avgs.index, avgs.values, color=colors)
     ax1.set_title("Avg ΔTemp per Core")
@@ -153,8 +140,16 @@ def run_core_heatmap_comparaison():
         ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
     ax1.text(0.5,1.05,f"Overall Avg Δ: {overall}°C", ha='center', va='center', transform=ax1.transAxes,
              fontsize=12, fontweight='bold', bbox=dict(boxstyle="round,pad=0.3",facecolor='lightyellow',edgecolor='black'))
-    st.pyplot(fig)
 
+    ax_table = fig.add_subplot(spec[1,:])
+    ax_table.axis("off")
+    table = ax_table.table(cellText=summary_df.values, colLabels=summary_df.columns, loc='center', cellLoc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2)
+
+    st.pyplot(fig)
+    st.table(summary_df)
     buf = BytesIO()
     fig.savefig(buf, format='png')
     st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(), file_name="difference_heatmap.png", mime="image/png")
