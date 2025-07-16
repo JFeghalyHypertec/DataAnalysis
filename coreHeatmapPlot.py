@@ -129,7 +129,7 @@ def run_core_heatmap_plot():
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
 
                 # Per-file user input using unique keys
-                user_plate = st.text_input(f"🧾 Enter Plate for {file_name}:", "", key=f"plate_{i}")
+                user_plate = st.text_input(f"🧾 Enter plate name for {file_name}:", "", key=f"plate_{i}")
                 user_occt_version = st.text_input(f"🔧 Enter OCCT Version for {file_name}:", "", key=f"occt_{i}")
 
                 summary = build_summary_table(df, core_df, uploaded_file, user_plate, user_occt_version)
