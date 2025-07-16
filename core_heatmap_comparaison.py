@@ -5,23 +5,26 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from io import BytesIO
 import matplotlib.gridspec as gridspec
+from pathlib import Path
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
 TR1 = "TR1 Temperature (System Board)"
+CPU_PACKAGE = "CPU Package"
+WATER_FLOW = "Water Flow"
 
 def extract_core_data(df):
     time_col = 0
     time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
 
-    # Extract core temperature columns
+    # Core temperatures
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     core_data = core_data.replace(0, np.nan)
 
-    # Extract TR1 column
+    # TR1 (optional)
     tr1_col = next((i for i in range(df.shape[1]) if df.iloc[1, i] == TR1), None)
     if tr1_col is not None:
         tr1_data = pd.to_numeric(df.iloc[START_ROW:, tr1_col], errors='coerce')
@@ -31,103 +34,127 @@ def extract_core_data(df):
     else:
         tr1_grouped = None
 
-    # Group core data
+    # Bucket by minute
     core_data['time_bucket'] = (core_data.index // 60) * 60
     grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
-
     return grouped_core, tr1_grouped
 
+def get_col(df, name):
+    try:
+        return next(i for i in range(df.shape[1]) if df.iloc[1, i] == name)
+    except StopIteration:
+        return None
+
+def get_numeric_col(df, name):
+    col_idx = get_col(df, name)
+    if col_idx is None:
+        return pd.Series(dtype=float)
+    vals = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
+    return vals[(vals != 0) & (~vals.isna())]
 
 def run_core_heatmap_comparaison():
-    file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv", "xls", "xlsx"], key="file1")
-    file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv", "xls", "xlsx"], key="file2")
-    st.info("ℹ️ **Recommended:** Upload the **hottest test** as the **second file** and the **coldest test** as the **first file**.\nThis ensures that temperature differences are positive when cooling is effective.")
-
+    st.header("🔥 Core Difference Heatmap")
+    file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv","xls","xlsx"], key="file1_cmp")
+    file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv","xls","xlsx"], key="file2_cmp")
+    st.info("ℹ️ Recommended: hottest test as second, coldest as first for positive ΔTemp.")
     if not file1 or not file2:
         return
-    
-    
-    try:
-        file1_name = file1.name
-        file2_name = file2.name
 
-        df1 = pd.read_csv(file1, header=None) if file1.name.endswith(".csv") else pd.read_excel(file1, header=None)
-        df2 = pd.read_csv(file2, header=None) if file2.name.endswith(".csv") else pd.read_excel(file2, header=None)
+    # Read raw
+    raw1 = pd.read_csv(file1, header=None) if file1.name.endswith('.csv') else pd.read_excel(file1, header=None)
+    raw2 = pd.read_csv(file2, header=None) if file2.name.endswith('.csv') else pd.read_excel(file2, header=None)
+    file1_name, file2_name = file1.name, file2.name
 
-        df1, tr1_df1 = extract_core_data(df1)
-        df2, tr1_df2 = extract_core_data(df2)
+    # Extract grouped core data
+    core1, tr1_1 = extract_core_data(raw1)
+    core2, tr1_2 = extract_core_data(raw2)
 
-        # Validate time alignment
-        t1 = df1.index.max()
-        t2 = df2.index.max()
-        if abs(t1 - t2) > 60:
-            st.error(f"❗ Time misalignment detected.\nLast timestamp difference: {abs(t1 - t2)} seconds")
-            return
-        common_index = df1.index.intersection(df2.index)
-        common_columns = df1.columns.intersection(df2.columns)
+    # Inputs for Plate & Version
+    plate1 = st.text_input(f"Plate for {file1_name}:", key="plate1_cmp").strip() or "NA"
+    occt1  = st.text_input(f"OCCT Version for {file1_name}:", key="occt1_cmp").strip() or "NA"
+    plate2 = st.text_input(f"Plate for {file2_name}:", key="plate2_cmp").strip() or "NA"
+    occt2  = st.text_input(f"OCCT Version for {file2_name}:", key="occt2_cmp").strip() or "NA"
 
-        df1_aligned = df1.loc[common_index, common_columns]
-        df2_aligned = df2.loc[common_index, common_columns]
+    # Calculate metrics
+    cpu1 = get_numeric_col(raw1, CPU_PACKAGE)
+    cpu2 = get_numeric_col(raw2, CPU_PACKAGE)
+    cpu1_avg = cpu1.mean() if not cpu1.empty else np.nan
+    cpu2_avg = cpu2.mean() if not cpu2.empty else np.nan
+    cpu_diff = cpu2_avg - cpu1_avg if pd.notnull(cpu1_avg) and pd.notnull(cpu2_avg) else np.nan
 
+    overall1 = np.nanmean(core1.values.flatten()) if core1.size else np.nan
+    overall2 = np.nanmean(core2.values.flatten()) if core2.size else np.nan
+    overall_diff = overall2 - overall1 if pd.notnull(overall1) and pd.notnull(overall2) else np.nan
 
-        if tr1_df1 is not None and tr1_df2 is not None:
-            tr1_df1 = tr1_df1.loc[common_index]
-            tr1_df2 = tr1_df2.loc[common_index]
+    wf1 = get_numeric_col(raw1, WATER_FLOW)
+    wf2 = get_numeric_col(raw2, WATER_FLOW)
+    wf1_avg = wf1.mean() if not wf1.empty else np.nan
+    wf2_avg = wf2.mean() if not wf2.empty else np.nan
+    wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
 
-            df1_aligned = df1_aligned.subtract(tr1_df1, axis=0)
-            df2_aligned = df2_aligned.subtract(tr1_df2, axis=0)
-        else:
-            missing_in = []
-            if tr1_df1 is None:
-                missing_in.append(f"❌ TR1 not found in **{file1_name}**")
-            if tr1_df2 is None:
-                missing_in.append(f"❌ TR1 not found in **{file2_name}**")
-            st.warning("⚠️ TR1 adjustment skipped:\n" + "\n".join(missing_in))
+    # Build comparison table
+    cols = ["", "Plate", "OCCT Version",
+            f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
+    data = [
+        [file1_name, plate1, occt1,
+         round(cpu1_avg,2) if pd.notnull(cpu1_avg) else "NA",
+         round(overall1,2) if pd.notnull(overall1) else "NA",
+         round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
 
-        
-        df_diff = df2_aligned - df1_aligned
-        df_diff.index = (df_diff.index / 3600).round(2)
+        [file2_name, plate2, occt2,
+         round(cpu2_avg,2) if pd.notnull(cpu2_avg) else "NA",
+         round(overall2,2) if pd.notnull(overall2) else "NA",
+         round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
 
-        st.subheader("🧊 Temperature Difference Heatmap")
-        fig = plt.figure(figsize=(16, 8))
-        spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[4, 1])
-        
-        ax0 = fig.add_subplot(spec[0])
-        sns.heatmap(df_diff.T, cmap="coolwarm", center=0, cbar_kws={'label': 'ΔTemp (°C)'}, ax=ax0)
+        ["File2 - File1", "", "",
+         round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA",
+         round(overall_diff,2) if pd.notnull(overall_diff) else "NA",
+         round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
+    ]
+    summary_df = pd.DataFrame(data, columns=cols)
+    st.subheader("📋 Comparison Summary")
+    st.table(summary_df)
 
-        title = f"Difference Heatmap ({file2_name} - {file1_name})\nAveraged every 60 seconds"
-        ax0.set_title(title)
-        ax0.set_xlabel("Time (hours)")
-        ax0.set_ylabel("CPU Cores")
-        
-        averages = df_diff[df_diff != 0].mean().round(2)
-        overall_avg = averages.mean().round(2)
-        ax1 = fig.add_subplot(spec[1])
-        colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in averages.values]
-        bars = ax1.barh(averages.index, averages.values, color=colors)
-        ax1.set_title("Avg Temp Difference per Core")
-        ax1.set_xlim(averages.min() - 5, averages.max() + 5)
-        ax1.set_xlabel("°C")
-        for bar, value in zip(bars, averages.values):
-            ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}°C",
-                     va='center', ha='left', fontsize=9)
-            
-        ax1.text(
-            0.5, 1.05,
-            f"Overall Avg Temp Difference: {overall_avg:.1f}°C",
-            ha='center', va='center',
-            transform=ax1.transAxes,
-            fontsize=12,
-            fontweight='bold',
-            bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='lightyellow')
-        )
-        st.pyplot(fig)
+    # Align time and columns
+    t1, t2 = core1.index.max(), core2.index.max()
+    if abs(t1 - t2) > 60:
+        st.error(f"❗ Time misalignment: {abs(t1-t2)}s")
+        return
+    idx = core1.index.intersection(core2.index)
+    cols_common = core1.columns.intersection(core2.columns)
+    a1 = core1.loc[idx, cols_common]
+    a2 = core2.loc[idx, cols_common]
+    if tr1_1 is not None and tr1_2 is not None:
+        tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
+        a1 = a1.subtract(tr1_1, axis=0)
+        a2 = a2.subtract(tr1_2, axis=0)
 
-        # Download option
-        buf = BytesIO()
-        fig.savefig(buf, format="png")
-        st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(),
-                           file_name="difference_heatmap.png", mime="image/png")
+    df_diff = a2 - a1
+    df_diff.index = (df_diff.index/3600).round(2)
 
-    except Exception as e:
-        st.error(f"❌ Error processing files: {str(e)}")
+    # Plot
+    fig = plt.figure(figsize=(16,8))
+    spec = gridspec.GridSpec(1,2, width_ratios=[4,1])
+    ax0 = fig.add_subplot(spec[0])
+    sns.heatmap(df_diff.T, cmap="coolwarm", center=0, cbar_kws={'label':'ΔTemp (°C)'}, ax=ax0)
+    ax0.set_title(f"Diff Heatmap: {file2_name} - {file1_name}")
+    ax0.set_xlabel("Time (h)")
+    ax0.set_ylabel("CPU Cores")
+
+    avgs = df_diff[df_diff!=0].mean().round(2)
+    overall = avgs.mean().round(2)
+    ax1 = fig.add_subplot(spec[1])
+    colors = ['red' if x>0 else 'blue' if x<0 else 'gray' for x in avgs.values]
+    bars = ax1.barh(avgs.index, avgs.values, color=colors)
+    ax1.set_title("Avg ΔTemp per Core")
+    ax1.set_xlim(avgs.min()-5, avgs.max()+5)
+    ax1.set_xlabel("°C")
+    for b,v in zip(bars, avgs.values):
+        ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
+    ax1.text(0.5,1.05,f"Overall Avg Δ: {overall}°C", ha='center', va='center', transform=ax1.transAxes,
+             fontsize=12, fontweight='bold', bbox=dict(boxstyle="round,pad=0.3",facecolor='lightyellow',edgecolor='black'))
+    st.pyplot(fig)
+
+    buf = BytesIO()
+    fig.savefig(buf, format='png')
+    st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(), file_name="difference_heatmap.png", mime="image/png")
