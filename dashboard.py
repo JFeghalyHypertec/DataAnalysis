@@ -6,6 +6,7 @@ from excel_CPU_calculations import run_excel_CPU_calculations
 from core_percentage_difference import run_core_percentage_difference
 from core_correlation_matrix import run_core_correlation_matrix
 from core_clustering import run_core_clustering
+from core_dependency_graph import run_core_dependency_graph
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
@@ -18,7 +19,7 @@ if "active_tool" not in st.session_state:
 col1, col2,  col3 = st.columns(3)
 col4, col5, col6 = st.columns(3)
 col7 = st.columns(3)[0]  # Single column for the last button
-
+col8 = st.columns(3)[1]  # Single column for the last button
 with col1:
     if st.button("📊 Excel CPU Calculations"):
         st.session_state.active_tool = "Excel"
@@ -46,6 +47,10 @@ with col6:
 with col7:
     if st.button("🌀 Core Clustering"):
         st.session_state.active_tool = "Clustering"
+        
+with col8:
+    if st.button("🔗 Core Dependency Graph"):
+        st.session_state.active_tool = "Dependency Graph"
 st.divider()
 
 # Upload and execute based on selection
@@ -76,3 +81,7 @@ elif st.session_state.active_tool == "Correlation Matrix":
 elif st.session_state.active_tool == "Clustering":
     st.subheader("🌀 Core Clustering")
     run_core_clustering()
+    
+elif st.session_state.active_tool == "Dependency Graph":
+    st.subheader("🔗 Core Dependency Graph")
+    run_core_dependency_graph()

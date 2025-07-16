@@ -6,6 +6,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import streamlit as st
 from io import BytesIO
+from sklearn.decomposition import PCA
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
@@ -55,7 +56,6 @@ def run_core_clustering():
         st.dataframe(cluster_df.sort_values("Cluster"))
 
         # Plot clusters (2D projection)
-        from sklearn.decomposition import PCA
         pca = PCA(n_components=2)
         points = pca.fit_transform(core_profiles_scaled)
 
@@ -70,15 +70,6 @@ def run_core_clustering():
         ax.set_ylabel("PCA 2")
         ax.legend()
         st.pyplot(fig)
-
-        # Optionally: heatmap of original data
-        st.markdown("### 🌡️ Core Temperature Evolution")
-        fig2, ax2 = plt.subplots(figsize=(12, 6))
-        sns.heatmap(core_profiles, cmap="coolwarm", ax=ax2, cbar_kws={"label": "°C"})
-        ax2.set_title("Core Temps Over Time")
-        ax2.set_ylabel("Cores")
-        ax2.set_xlabel("Time steps")
-        st.pyplot(fig2)
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
