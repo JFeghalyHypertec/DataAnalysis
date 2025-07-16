@@ -77,24 +77,28 @@ def get_numeric_col(df, name):
     values = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
     return values[(values != 0) & (~values.isna())]
 
-def build_summary_table(df, core_df, file_path):
-    """Return a 1-row DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
+def build_summary_table(df, core_df, file_path, plate=None, occt_version=None):
+    wf_vals = get_numeric_col(df, WATER_FLOW)
+    water_flow = round(wf_vals.mean(), 1) if wf_vals is not None and not wf_vals.empty else np.nan
 
-    water_flow   = round(get_numeric_col(df, WATER_FLOW).mean(), 1) if get_col(df, WATER_FLOW) is not None else None
-    cpu_package  = round(get_numeric_col(df, CPU_PACKAGE).mean(), 1) if get_col(df, CPU_PACKAGE) is not None else None
+    cpu_vals = get_numeric_col(df, CPU_PACKAGE)
+    cpu_package = round(cpu_vals.mean(), 1) if cpu_vals is not None and not cpu_vals.empty else np.nan
+
     avg_core_tmp = core_df[core_df != 0].mean().mean()
 
-    parent_name = Path(file_path.name).parent.name
-    parts = parent_name.split("-") if parent_name else []
-    plate = parts[0] if parts else None
-    occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), None)
+    # Fallback if user input is missing
+    if not plate or plate.strip() == "":
+        parent_name = Path(file_path.name).parent.name
+        parts = parent_name.split("-") if parent_name else []
+        plate = parts[0] if parts else "NA"
+    if not occt_version or occt_version.strip() == "":
+        parent_name = Path(file_path.name).parent.name
+        parts = parent_name.split("-") if parent_name else []
+        occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), "NA")
 
-    # ── convert to strings, “NA” if missing ────────────────────────────────────
-    wf_str  = f"{water_flow:.2f} L/h" if not np.isnan(water_flow) else "NA"     # --
-    cpu_str = f"{cpu_package:.2f} °C" if not np.isnan(cpu_package) else "NA"   # --
-    avg_str = f"{avg_core_tmp:.2f} °C"                                          # always exists
-    plate   = plate or "NA"                                                  # --
-    occt_version = occt_version or "NA"                                      # --
+    wf_str  = f"{water_flow:.2f} L/h" if not np.isnan(water_flow) else "NA"
+    cpu_str = f"{cpu_package:.2f} °C" if not np.isnan(cpu_package) else "NA"
+    avg_str = f"{avg_core_tmp:.2f} °C"
 
     columns = ["Water Flow", "CPU Package", "Overall Avg Core", "Plate", "OCCT Version"]
     values  = [wf_str, cpu_str, avg_str, plate, occt_version]
@@ -111,7 +115,7 @@ def run_core_heatmap_plot():
     )
 
     if uploaded_files:
-        for uploaded_file in uploaded_files:
+        for i, uploaded_file in enumerate(uploaded_files):
             file_name = uploaded_file.name
 
             try:
@@ -121,19 +125,25 @@ def run_core_heatmap_plot():
                     df = pd.read_excel(uploaded_file, header=None)
 
                 core_df = extract_core_data(df)
-                
+
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
-                summary = build_summary_table(df, core_df, uploaded_file)
+
+                # Per-file user input using unique keys
+                user_plate = st.text_input(f"🧾 Enter Plate for {file_name}:", "", key=f"plate_{i}")
+                user_occt_version = st.text_input(f"🔧 Enter OCCT Version for {file_name}:", "", key=f"occt_{i}")
+
+                summary = build_summary_table(df, core_df, uploaded_file, user_plate, user_occt_version)
                 fig = plot_heatmap(core_df, uploaded_file, summary_table=summary)
                 st.pyplot(fig)
-                
+                st.table(summary)
+
                 # Save button with dynamic filename
                 buf = BytesIO()
                 fig.savefig(buf, format="png")
                 st.download_button(
                     label=f"💾 Download Heatmap for {file_name}",
                     data=buf.getvalue(),
-                    file_name=f"{file_name.replace('.','_')}_heatmap.png",
+                    file_name=f"{file_name.replace('.', '_')}_heatmap.png",
                     mime="image/png"
                 )
                 st.markdown("---")  # Divider between plots
