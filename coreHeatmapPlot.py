@@ -80,8 +80,8 @@ def get_numeric_col(df, name):
 def build_summary_table(df, core_df, file_path):
     """Return a 1-row DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
 
-    water_flow   = round(get_numeric_col(df, WATER_FLOW).mean(), 1) if water_flow is not None else None
-    cpu_package  = round(get_numeric_col(df, CPU_PACKAGE).mean(), 1) if cpu_package is not None else None
+    water_flow   = round(get_numeric_col(df, WATER_FLOW).mean(), 1) if get_col(df, WATER_FLOW) is not None else None
+    cpu_package  = round(get_numeric_col(df, CPU_PACKAGE).mean(), 1) if get_col(df, CPU_PACKAGE) is not None else None
     avg_core_tmp = core_df[core_df != 0].mean().mean()
 
     parent_name = Path(file_path.name).parent.name
