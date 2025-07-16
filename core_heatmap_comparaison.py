@@ -46,11 +46,7 @@ def run_core_heatmap_comparaison():
     if not file1 or not file2:
         return
     
-    if file1.name == file2.name:
-        #st.error("❗ Please upload two different files for comparison.")
-        #return
-        y = 1
-        
+    
     try:
         file1_name = file1.name
         file2_name = file2.name
