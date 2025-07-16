@@ -9,6 +9,8 @@ from pathlib import Path
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
+CPU_PACKAGE = "CPU Package"
+WATER_FLOW = "Water Flow"
 
 def extract_core_data(df):
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
@@ -48,17 +50,7 @@ def plot_heatmap(core_df, file_path, summary_table=None):
     for bar, value in zip(bars, averages.values):
         ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}°C",
                  va='center', ha='left', fontsize=9)
-
-    ax1.text(
-        0.5, 1.05,
-        f"Overall Avg Temp: {overall_avg:.1f}°C",
-        ha='center', va='center',
-        transform=ax1.transAxes,
-        fontsize=12,
-        fontweight='bold',
-        bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='lightyellow')
-    )
-
+        
     # Summary Table
     ax2 = fig.add_subplot(spec[1, :])
     ax2.axis("off")
@@ -73,23 +65,28 @@ def plot_heatmap(core_df, file_path, summary_table=None):
     plt.tight_layout()
     return fig
 
+def get_col(df, name):
+    try:
+        return next(i for i in range(df.shape[1]) if df.iloc[1, i] == name)
+    except StopIteration:
+        return None
+
+def get_numeric_col(df, name):
+    col_idx = get_col(df, name)
+    if col_idx is None: return None
+    values = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
+    return values[(values != 0) & (~values.isna())]
+
 def build_summary_table(df, core_df, file_path):
     """Return a 1-row DataFrame with Water Flow, CPU Package, Avg Core, Plate, OCCT ver."""
-    def _col_mean(label_keyword):
-        cols = [i for i in range(df.shape[1])
-                if isinstance(df.iloc[1, i], str) and label_keyword in df.iloc[1, i]]
-        if not cols:
-            return np.nan
-        vals = df.iloc[START_ROW:, cols].apply(pd.to_numeric, errors="coerce")
-        return vals.replace(0, np.nan).mean().mean()
 
-    water_flow   = _col_mean("Water Flow")
-    cpu_package  = _col_mean("CPU Package")
+    water_flow   = round(get_numeric_col(df, WATER_FLOW).mean(), 1) if water_flow is not None else None
+    cpu_package  = round(get_numeric_col(df, CPU_PACKAGE).mean(), 1) if cpu_package is not None else None
     avg_core_tmp = core_df[core_df != 0].mean().mean()
 
     parent_name = Path(file_path.name).parent.name
     parts = parent_name.split("-") if parent_name else []
-    plate        = parts[0] if parts else None
+    plate = parts[0] if parts else None
     occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), None)
 
     # ── convert to strings, “NA” if missing ────────────────────────────────────
