@@ -53,7 +53,7 @@ def get_numeric_col(df, name):
     return vals[(vals != 0) & (~vals.isna())]
 
 def run_core_heatmap_comparaison():
-    st.header("🔥 1 Core Difference Heatmap")
+    st.header("🔥 Core Difference Heatmap")
     file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv","xls","xlsx"], key="file1_cmp")
     file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv","xls","xlsx"], key="file2_cmp")
     st.info("ℹ️ Recommended: hottest test as second, coldest as first for positive ΔTemp.")
@@ -151,6 +151,8 @@ def run_core_heatmap_comparaison():
     ax1.set_xlabel("°C")
     for b,v in zip(bars, avgs.values):
         ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
+    ax1.text(0.5,1.05,f"Overall Avg Δ: {overall}°C", ha='center', va='center', transform=ax1.transAxes,
+             fontsize=12, fontweight='bold', bbox=dict(boxstyle="round,pad=0.3",facecolor='lightyellow',edgecolor='black'))
     st.pyplot(fig)
 
     buf = BytesIO()
