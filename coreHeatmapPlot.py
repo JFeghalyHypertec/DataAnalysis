@@ -100,8 +100,8 @@ def build_summary_table(df, core_df, file_path, plate=None, occt_version=None):
     cpu_str = f"{cpu_package:.2f} °C" if not np.isnan(cpu_package) else "NA"
     avg_str = f"{avg_core_tmp:.2f} °C"
 
-    columns = ["Plate", "OCCT Version", CPU_PACKAGE, "Overall Average Core", WATER_FLOW]  # Move Plate and OCCT to the front
-    values  = [wf_str, cpu_str, avg_str, plate, occt_version]
+    columns = ["Plate", "OCCT Version", CPU_PACKAGE, "Overall Average Core", WATER_FLOW]
+    values = [plate, occt_version, cpu_str, avg_str, wf_str]
 
     return pd.DataFrame([values], columns=columns)
 
