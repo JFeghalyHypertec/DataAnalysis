@@ -17,14 +17,12 @@ def extract_core_data(df):
     time_col = 0
     time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
 
-    # Core temperatures
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     core_data = core_data.replace(0, np.nan)
 
-    # TR1 (optional)
     tr1_col = next((i for i in range(df.shape[1]) if df.iloc[1, i] == TR1), None)
     if tr1_col is not None:
         tr1_data = pd.to_numeric(df.iloc[START_ROW:, tr1_col], errors='coerce')
@@ -34,7 +32,6 @@ def extract_core_data(df):
     else:
         tr1_grouped = None
 
-    # Bucket by minute
     core_data['time_bucket'] = (core_data.index // 60) * 60
     grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
     return grouped_core, tr1_grouped
@@ -52,6 +49,18 @@ def get_numeric_col(df, name):
     vals = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
     return vals[(vals != 0) & (~vals.isna())]
 
+def read_uploaded_file(uploaded_file):
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            return pd.read_csv(uploaded_file, header=None)
+        elif uploaded_file.name.endswith(('.xls', '.xlsx')):
+            return pd.read_excel(uploaded_file, header=None, engine='openpyxl')
+        else:
+            raise ValueError(f"Unsupported file type: {uploaded_file.name}")
+    except Exception as e:
+        st.error(f"❌ Failed to read file `{uploaded_file.name}`: {e}")
+        return None
+
 def run_core_heatmap_comparaison():
     st.header("🔥 Core Difference Heatmap")
     file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv","xls","xlsx"], key="file1_cmp")
@@ -60,22 +69,21 @@ def run_core_heatmap_comparaison():
     if not file1 or not file2:
         return
 
-    # Read raw
-    raw1 = pd.read_csv(file1, header=None) if file1.name.endswith('.csv') else pd.read_excel(file1, header=None)
-    raw2 = pd.read_csv(file2, header=None) if file2.name.endswith('.csv') else pd.read_excel(file2, header=None)
+    raw1 = read_uploaded_file(file1)
+    raw2 = read_uploaded_file(file2)
+    if raw1 is None or raw2 is None:
+        return
+
     file1_name, file2_name = file1.name, file2.name
 
-    # Extract grouped core data
     core1, tr1_1 = extract_core_data(raw1)
     core2, tr1_2 = extract_core_data(raw2)
 
-    # Inputs for Plate & Version
     plate1 = st.text_input(f"Plate for {file1_name}:", key="plate1_cmp").strip() or "NA"
     occt1  = st.text_input(f"OCCT Version for {file1_name}:", key="occt1_cmp").strip() or "NA"
     plate2 = st.text_input(f"Plate for {file2_name}:", key="plate2_cmp").strip() or "NA"
     occt2  = st.text_input(f"OCCT Version for {file2_name}:", key="occt2_cmp").strip() or "NA"
 
-    # Calculate metrics
     cpu1 = get_numeric_col(raw1, CPU_PACKAGE)
     cpu2 = get_numeric_col(raw2, CPU_PACKAGE)
     cpu1_avg = cpu1.mean() if not cpu1.empty else np.nan
@@ -92,7 +100,6 @@ def run_core_heatmap_comparaison():
     wf2_avg = wf2.mean() if not wf2.empty else np.nan
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
 
-    # Build comparison table
     cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
     data = [
         [file1_name, plate1, occt1, round(cpu1_avg,2) if pd.notnull(cpu1_avg) else "NA", round(overall1,2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
@@ -102,7 +109,6 @@ def run_core_heatmap_comparaison():
     summary_df = pd.DataFrame(data, columns=cols)
     st.subheader("📋 Comparison Summary")
 
-    # Align time and columns
     t1, t2 = core1.index.max(), core2.index.max()
     if abs(t1 - t2) > 60:
         st.error(f"❗ Time misalignment: {abs(t1-t2)}s")
@@ -119,7 +125,6 @@ def run_core_heatmap_comparaison():
     df_diff = a2 - a1
     df_diff.index = (df_diff.index/3600).round(2)
 
-    # Plot
     fig = plt.figure(figsize=(16,12))
     spec = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[4,1])
     ax0 = fig.add_subplot(spec[0,0])
