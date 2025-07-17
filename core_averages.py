@@ -40,6 +40,12 @@ def run_display_core_avg_table():
             avg_temps = core_df.mean()
 
             values = [avg_temps.get(core) for core in CORE_LIST]
+            # Choose a colormap and normalization for temperature values
+            vmin = np.nanmin(values)
+            vmax = np.nanmax(values)
+            cmap = cm.get_cmap("coolwarm")
+            norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+
             texts = [
                 f"{core} = {val:.2f}°C" if pd.notnull(val) else f"{core} = N/A"
                 for core, val in zip(CORE_LIST, values)
@@ -84,7 +90,7 @@ def run_display_core_avg_table():
 
             ax1.axis("off")
             ax2.axis("off")
-
+            
             # First table (original, heatmap-style)
             tbl1 = ax1.table(cellText=df_table.values, loc="center", cellLoc="center")
             for i, row in enumerate(val_rows):
@@ -131,7 +137,3 @@ def run_display_core_avg_table():
             st.error(f"❗ Error processing {uploaded_file.name}: {e}")
 
         # Choose a colormap and normalization for temperature values
-        vmin = np.nanmin(values)
-        vmax = np.nanmax(values)
-        cmap = cm.get_cmap("coolwarm")
-        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
