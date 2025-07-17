@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.cm as cm
 from io import BytesIO
 import numpy as np
 
@@ -13,8 +14,6 @@ def extract_core_data(df):
     if not core_cols:
         raise ValueError("No core temperature columns found.")
     time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
-    if time.iloc[0] > 1e6:
-        time = time / 1000
     time = time - time.iloc[0]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
@@ -40,7 +39,6 @@ def run_display_core_avg_table():
             core_df = extract_core_data(df)
             avg_temps = core_df.mean()
 
-            # Format core text and store values for color mapping
             values = [avg_temps.get(core) for core in CORE_LIST]
             texts = [
                 f"{core} = {val:.2f}°C" if pd.notnull(val) else f"{core} = N/A"
@@ -62,27 +60,35 @@ def run_display_core_avg_table():
             flat_vals = [v for row in val_rows for v in row if not pd.isna(v)]
             vmin, vmax = min(flat_vals), max(flat_vals)
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-            cmap = plt.cm.coolwarm  # or use plt.cm.viridis, etc.
+            cmap = cm.coolwarm
 
-            fig, ax = plt.subplots(figsize=(12, 2 + len(df_table)*0.5))
-            ax.axis('off')
-            tbl = ax.table(cellText=df_table.values, loc='center', cellLoc='center')
+            fig, (ax, cax) = plt.subplots(
+                ncols=2,
+                figsize=(13, 2 + len(df_table) * 0.5),
+                gridspec_kw={"width_ratios": [12, 0.3]}
+            )
+            ax.axis("off")
+            tbl = ax.table(cellText=df_table.values, loc="center", cellLoc="center")
 
-            # Color each cell based on temperature value
             for i, row in enumerate(val_rows):
                 for j, val in enumerate(row):
                     if pd.notnull(val):
                         color = cmap(norm(val))
                     else:
-                        color = (1, 1, 1, 1)  # white
-                    cell = tbl[i, j]  # FIXED: use i, not i+1
-                    cell.set_facecolor(color)
+                        color = (1, 1, 1, 1)
+                    tbl[i, j].set_facecolor(color)
 
             tbl.auto_set_font_size(False)
             tbl.set_fontsize(10)
             tbl.scale(1, 1.5)
-            plt.tight_layout()
 
+            # Colorbar
+            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])  # Required for matplotlib < 3.1
+            cbar = fig.colorbar(sm, cax=cax)
+            cbar.set_label("Temperature (°C)")
+
+            plt.tight_layout()
             st.pyplot(fig)
 
             # Save as image
@@ -96,4 +102,4 @@ def run_display_core_avg_table():
             )
 
         except Exception as e:
-            st.error(f"❌ Error processing file: {e}")
+                st.error(f"❗ Error processing {uploaded_file.name}: {e}")
