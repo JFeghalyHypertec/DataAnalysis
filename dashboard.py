@@ -7,6 +7,7 @@ from core_percentage_difference import run_core_percentage_difference
 from core_correlation_matrix import run_core_correlation_matrix
 from core_clustering import run_core_clustering
 from core_positions import run_core_physical_layout
+from core_averages import run_display_core_avg_table
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
@@ -16,10 +17,10 @@ st.write("Select a tool below to begin:")
 if "active_tool" not in st.session_state:
     st.session_state.active_tool = None
 
-col1, col2,  col3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 col4, col5, col6 = st.columns(3)
-col7 = st.columns(3)[0]  # Single column for the last button
-col8 = st.columns(3)[0]  # Single column for the last button
+col7, col8, col9 = st.columns(3)
+
 with col1:
     if st.button("📊 Excel CPU Calculations"):
         st.session_state.active_tool = "Excel"
@@ -47,9 +48,14 @@ with col6:
 with col7:
     if st.button("🌀 Core Clustering"):
         st.session_state.active_tool = "Clustering"
+
 with col8:
     if st.button("📐 Core Physical Layout"):
         st.session_state.active_tool = "Physical Layout"
+        
+with col9:
+    if st.button("🌡️ Average Temperature Table"):
+        st.session_state.active_tool = "Average Table"
         
 st.divider()
 
@@ -85,3 +91,7 @@ elif st.session_state.active_tool == "Clustering":
 elif st.session_state.active_tool == "Physical Layout":
     st.subheader("📐 Core Physical Layout")
     run_core_physical_layout()
+
+elif st.session_state.active_tool == "Average Table":
+    st.subheader("🌡️ Average Temperature Table")
+    run_display_core_avg_table()
