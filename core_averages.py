@@ -105,7 +105,11 @@ def run_display_core_avg_table():
             tbl2 = ax2.table(cellText=second_table_text, colLabels=[f"Col {i+1}" for i in range(n_cols)], loc="center", cellLoc="center")
             for i, row in enumerate(second_table_vals):
                 for j, val in enumerate(row):
-                    color = cmap(norm(val)) if pd.notnull(val) else (1, 1, 1, 1)
+                    label = second_table_text[i][j]
+                    if label and pd.notnull(val):
+                        color = cmap(norm(val))
+                    else:
+                        color = (1, 1, 1, 1)
                     tbl2[i, j].set_facecolor(color)
             tbl2.auto_set_font_size(False)
             tbl2.set_fontsize(10)
