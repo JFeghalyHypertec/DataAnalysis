@@ -98,7 +98,7 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
 
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
-                        title=f"🔗 Core Dependency Graph: {filename}",
+                        title=dict(text=f"🔗 Core Dependency Graph: {filename}", font=dict(size=16)),
                         titlefont=dict(size=16),
                         showlegend=False,
                         hovermode='closest',
