@@ -143,7 +143,6 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
                         xaxis=dict(showgrid=False, zeroline=False),
                         yaxis=dict(showgrid=False, zeroline=False),
                         height=700,
-                        annotations=edge_annotations
                     ))
     return fig
 
