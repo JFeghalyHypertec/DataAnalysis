@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import networkx as nx
 from io import BytesIO
-
+import plotly.graph_objects as go
+import plotly.io as pio
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
 
@@ -45,13 +46,66 @@ def build_dependency_graph(corr_matrix, threshold=0.9):
                 G.add_edge(c1, c2, weight=round(corr_val, 2))
     return G
 
-def plot_dependency_graph(G, filename):
-    pos = nx.spring_layout(G, seed=42)
-    weights = nx.get_edge_attributes(G, 'weight')
-    fig, ax = plt.subplots(figsize=(12, 10))
-    nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=1000, font_size=10, ax=ax)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=weights, font_color='red', font_size=8, ax=ax)
-    ax.set_title(f"🔗 Core Dependency Graph: {filename}")
+def plot_dependency_graph_plotly(G, filename, threshold=0.9):
+    pos = nx.spring_layout(G, seed=42, k=0.5, iterations=100)
+    edge_x = []
+    edge_y = []
+    edge_weights = []
+    edge_texts = []
+
+    for u, v, data in G.edges(data=True):
+        x0, y0 = pos[u]
+        x1, y1 = pos[v]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+        edge_weights.append(data['weight'])
+        edge_texts.append(f"{u} ↔ {v}<br>Corr: {data['weight']}")
+
+    edge_trace = go.Scatter(
+        x=edge_x,
+        y=edge_y,
+        line=dict(width=1, color='rgba(150, 0, 0, 0.6)'),
+        hoverinfo='text',
+        mode='lines',
+        text=edge_texts
+    )
+
+    node_x = []
+    node_y = []
+    node_text = []
+
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        node_text.append(node)
+
+    node_trace = go.Scatter(
+        x=node_x,
+        y=node_y,
+        mode='markers+text',
+        text=node_text,
+        textposition='top center',
+        hoverinfo='text',
+        marker=dict(
+            color='skyblue',
+            size=20,
+            line=dict(width=2, color='DarkSlateGrey')
+        )
+    )
+
+    fig = go.Figure(data=[edge_trace, node_trace],
+                    layout=go.Layout(
+                        title=f"🔗 Core Dependency Graph: {filename}",
+                        titlefont=dict(size=16),
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20, l=5, r=5, t=40),
+                        xaxis=dict(showgrid=False, zeroline=False),
+                        yaxis=dict(showgrid=False, zeroline=False),
+                        height=700
+                    ))
+
     return fig
 
 def run_core_correlation_matrix():
@@ -84,8 +138,8 @@ def run_core_correlation_matrix():
                                   min_value=round(min_corr,2), max_value=1.0, value=0.9,
                                   step=0.01)
             G = build_dependency_graph(corr_matrix, threshold=threshold)
-            graph_fig = plot_dependency_graph(G, uploaded_file.name)
-            st.pyplot(graph_fig)
+            graph_fig = plot_dependency_graph_plotly(G, uploaded_file.name,threshold=threshold)
+            st.plotly_chart(graph_fig, use_container_width=True)
 
             # Download dependency graph
             graph_buf = BytesIO()
@@ -95,6 +149,13 @@ def run_core_correlation_matrix():
                 data=graph_buf.getvalue(),
                 file_name=f"{uploaded_file.name}_core_dependency_graph.png",
                 mime="image/png"
+            )
+            html_bytes = pio.to_html(graph_fig, full_html=True).encode('utf-8')
+            st.download_button(
+                label="📥 Download Dependency Graph as HTML",
+                data=html_bytes,
+                file_name=f"{uploaded_file.name}_core_dependency_graph.html",
+                mime="text/html"
             )
 
         except Exception as e:
