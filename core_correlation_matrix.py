@@ -69,6 +69,20 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
         mode='lines',
         text=edge_texts
     )
+    
+    edge_annotations = []
+    for edge in G.edges(data=True):
+        u, v, data = edge
+        x0, y0 = pos[u]
+        x1, y1 = pos[v]
+        edge_x = (x0 + x1) / 2
+        edge_y = (y0 + y1) / 2
+        weight = round(data['weight'],2)
+        edge
+        edge_annotations.append(
+            dict(x=edge_x, y=edge_y, text=str(weight), showarrow=False, 
+                 font=dict(size=10, color='gray'), xanchor='center', yanchor='middle')
+        )
 
     node_x = []
     node_y = []
@@ -98,7 +112,7 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
 
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
-                    title=dict(text=f"🔗 Core Dependency Graph: {filename} at threshold={threshold}", font=dict(size=16)),
+                    title=dict(text=f"🔗 Core Dependency Graph: {filename} at threshold={threshold}", font=dict(size=16),annotations=edge_annotations),
                     showlegend=False,
                     hovermode='closest',
                     margin=dict(b=20, l=5, r=5, t=40),
