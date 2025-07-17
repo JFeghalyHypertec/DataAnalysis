@@ -1,7 +1,9 @@
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from io import BytesIO
+import numpy as np
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]  # All 26 cores
@@ -20,7 +22,7 @@ def extract_core_data(df):
     return core_data
 
 def run_display_core_avg_table():
-    st.subheader("🌡️ Average Temperature Table by Core (6 per row)")
+    st.subheader("🌡️ Average Temperature Table by Core (6 per row, heatmap-style)")
 
     uploaded_files = st.file_uploader(
         "📂 Upload one or more OCCT CSV Files",
@@ -38,23 +40,44 @@ def run_display_core_avg_table():
             core_df = extract_core_data(df)
             avg_temps = core_df.mean()
 
-            # Format: "Core X = avg"
-            formatted = [f"{core} = {avg_temps.get(core):.2f}°C" if pd.notnull(avg_temps.get(core)) else f"{core} = N/A"
-                         for core in CORE_LIST]
+            # Format core text and store values for color mapping
+            values = [avg_temps.get(core) for core in CORE_LIST]
+            texts = [
+                f"{core} = {val:.2f}°C" if pd.notnull(val) else f"{core} = N/A"
+                for core, val in zip(CORE_LIST, values)
+            ]
 
             # Group into rows of 6
-            rows = [formatted[i:i+6] for i in range(0, len(formatted), 6)]
-            # Pad last row with empty strings if needed
-            while len(rows[-1]) < 6:
-                rows[-1].append("")
+            text_rows = [texts[i:i+6] for i in range(0, len(texts), 6)]
+            val_rows = [values[i:i+6] for i in range(0, len(values), 6)]
 
-            # Convert to DataFrame for display
-            df_table = pd.DataFrame(rows)
+            # Pad last row if needed
+            while len(text_rows[-1]) < 6:
+                text_rows[-1].append("")
+                val_rows[-1].append(np.nan)
 
-            # Display as image
+            df_table = pd.DataFrame(text_rows)
+
+            # Normalize values for coloring
+            flat_vals = [v for row in val_rows for v in row if not pd.isna(v)]
+            vmin, vmax = min(flat_vals), max(flat_vals)
+            norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+            cmap = plt.cm.coolwarm  # or use plt.cm.viridis, etc.
+
             fig, ax = plt.subplots(figsize=(12, 2 + len(df_table)*0.5))
             ax.axis('off')
             tbl = ax.table(cellText=df_table.values, loc='center', cellLoc='center')
+
+            # Color each cell based on temperature value
+            for i, row in enumerate(val_rows):
+                for j, val in enumerate(row):
+                    if pd.notnull(val):
+                        color = cmap(norm(val))
+                    else:
+                        color = (1, 1, 1, 1)  # white
+                    cell = tbl[i+1, j]  # i+1 because row 0 is header (even if hidden)
+                    cell.set_facecolor(color)
+
             tbl.auto_set_font_size(False)
             tbl.set_fontsize(10)
             tbl.scale(1, 1.5)
