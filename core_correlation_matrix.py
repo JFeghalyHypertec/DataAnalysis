@@ -59,7 +59,7 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
         edge_x += [x0, x1, None]
         edge_y += [y0, y1, None]
         edge_weights.append(data['weight'])
-        edge_texts.append(f"{u} ↔ {v}<br>Corr: {data['weight']}")
+        edge_texts.append(f"{u} ↔ {v}<br>Corr: {data['weight']:.2f}")
 
     edge_trace = go.Scatter(
         x=edge_x,
@@ -69,40 +69,46 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
         mode='lines',
         text=edge_texts
     )
-    
+
     edge_annotations = []
-    for edge in G.edges(data=True):
-        u, v, data = edge
+    for u, v, data in G.edges(data=True):
         x0, y0 = pos[u]
         x1, y1 = pos[v]
-        edge_x = (x0 + x1) / 2
-        edge_y = (y0 + y1) / 2
-        weight = round(data['weight'],2)
-        edge
+        edge_x_mid = (x0 + x1) / 2
+        edge_y_mid = (y0 + y1) / 2
+        weight = round(data['weight'], 2)
         edge_annotations.append(
-            dict(x=edge_x, y=edge_y, text=str(weight), showarrow=False, 
-                 font=dict(size=10, color='gray'), xanchor='center', yanchor='middle')
+            dict(
+                x=edge_x_mid, y=edge_y_mid,
+                text=str(weight), showarrow=False,
+                font=dict(size=10, color='gray'),
+                xanchor='center', yanchor='middle'
+            )
         )
 
     node_x = []
     node_y = []
-    node_text = []
-    adj_list = {node: list(G.adj[node]) for node in G.nodes()}
+    node_hover = []
+    node_labels = []
     for node in G.nodes():
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
-        connected = adj_list[node]
-        #hover_label = f"{node}<br>Connected to: {', '.join(connected) if connected else 'None'}"
-        #node_text.append(hover_label)
+        connections = [
+            f"{nbr} (Corr: {G[node][nbr]['weight']:.2f})"
+            for nbr in G.adj[node]
+        ]
+        hover_text = f"{node}<br>Connected to: " + (", ".join(connections) if connections else "None")
+        node_hover.append(hover_text)
+        node_labels.append(node)  # For text shown on graph (optional)
 
     node_trace = go.Scatter(
         x=node_x,
         y=node_y,
-        mode='markers+text',
-        text=node_text,
-        textposition='top center',
+        mode='markers',
         hoverinfo='text',
+        text=node_labels,
+        hovertext=node_hover,
         marker=dict(
             color='skyblue',
             size=20,
@@ -112,14 +118,18 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
 
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
-                    title=dict(text=f"🔗 Core Dependency Graph: {filename} at threshold={threshold}", font=dict(size=16)),
-                    showlegend=False,
-                    hovermode='closest',
-                    margin=dict(b=20, l=5, r=5, t=40),
-                    xaxis=dict(showgrid=False, zeroline=False),
-                    yaxis=dict(showgrid=False, zeroline=False),
-                    height=700, annotations=edge_annotations))
-
+                        title=dict(
+                            text=f"🔗 Core Dependency Graph: {filename} at threshold={threshold}",
+                            font=dict(size=16)
+                        ),
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20, l=5, r=5, t=40),
+                        xaxis=dict(showgrid=False, zeroline=False),
+                        yaxis=dict(showgrid=False, zeroline=False),
+                        height=700,
+                        annotations=edge_annotations
+                    ))
     return fig
 
 def run_core_correlation_matrix():
