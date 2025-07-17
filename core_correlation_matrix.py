@@ -93,8 +93,8 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
         node_x.append(x)
         node_y.append(y)
         connected = adj_list[node]
-        hover_label = f"{node}<br>Connected to: {', '.join(connected) if connected else 'None'}"
-        node_text.append(hover_label)
+        #hover_label = f"{node}<br>Connected to: {', '.join(connected) if connected else 'None'}"
+        #node_text.append(hover_label)
 
     node_trace = go.Scatter(
         x=node_x,
