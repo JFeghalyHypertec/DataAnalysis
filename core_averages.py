@@ -87,17 +87,18 @@ def run_display_core_avg_table():
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             cmap = cm.coolwarm
 
-            # Plot both tables one above the other
-            fig, (ax1, ax2) = plt.subplots(
-                nrows=2,
-                figsize=(8, 4 + max(len(df_table), len(vertical_table)) * 0.6)
+            # Plot both tables side by side
+            fig, (ax1, ax2, cax) = plt.subplots(
+                ncols=3,
+                figsize=(16, 2 + max(len(df_table), len(vertical_table)) * 0.5),
+                gridspec_kw={"width_ratios": [6, 6, 0.3]}
             )
 
             ax1.axis("off")
             ax2.axis("off")
 
             tbl1 = ax1.table(cellText=df_table.values, loc="center", cellLoc="center")
-            tbl2 = ax2.table(cellText=vertical_table.values, colLabels=vertical_table.columns, loc="center", cellLoc="center")
+            tbl2 = ax2.table(cellText=vertical_table.values, loc="center", cellLoc="center")
 
             # Heatmap for first table
             for i, row in enumerate(val_rows):
@@ -117,10 +118,7 @@ def run_display_core_avg_table():
                 tbl.set_fontsize(10)
                 tbl.scale(1, 1.5)
 
-            # Add a single colorbar to the right
-            from mpl_toolkits.axes_grid1 import make_axes_locatable
-            divider = make_axes_locatable(ax2)
-            cax = divider.append_axes("right", size="5%", pad=0.1)
+            # Colorbar
             sm = cm.ScalarMappable(cmap=cmap, norm=norm)
             sm.set_array([])
             cbar = fig.colorbar(sm, cax=cax)
