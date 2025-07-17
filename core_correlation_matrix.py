@@ -115,7 +115,22 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
             line=dict(width=2, color='DarkSlateGrey')
         )
     )
+    # Offset for labels above nodes
+    label_offset = 0.07  # Adjust as needed for clarity
+    node_label_x = node_x
+    node_label_y = [y + label_offset for y in node_y]
 
+    node_label_trace = go.Scatter(
+        x=node_label_x,
+        y=node_label_y,
+        mode='text',
+        text=node_labels,
+        textposition='top center',
+        hoverinfo='skip',
+        showlegend=False,
+        textfont=dict(size=14, color='black')
+    )
+    
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
                         title=dict(
