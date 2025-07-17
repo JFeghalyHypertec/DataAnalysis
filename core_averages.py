@@ -20,7 +20,7 @@ def extract_core_data(df):
     return core_data
 
 def run_display_core_avg_table():
-    st.subheader("🌡️ Average Temperature Table for All Cores")
+    st.subheader("🌡️ Average Temperature Table by Core (6 per row)")
 
     uploaded_files = st.file_uploader(
         "📂 Upload one or more OCCT CSV Files",
@@ -42,12 +42,17 @@ def run_display_core_avg_table():
             formatted = [f"{core} = {avg_temps.get(core):.2f}°C" if pd.notnull(avg_temps.get(core)) else f"{core} = N/A"
                          for core in CORE_LIST]
 
-            # Convert to 2 rows x 13 columns
-            rows = [formatted[i:i+13] for i in range(0, 26, 13)]
+            # Group into rows of 6
+            rows = [formatted[i:i+6] for i in range(0, len(formatted), 6)]
+            # Pad last row with empty strings if needed
+            while len(rows[-1]) < 6:
+                rows[-1].append("")
+
+            # Convert to DataFrame for display
             df_table = pd.DataFrame(rows)
 
             # Display as image
-            fig, ax = plt.subplots(figsize=(16, 2 + len(df_table)*0.5))
+            fig, ax = plt.subplots(figsize=(12, 2 + len(df_table)*0.5))
             ax.axis('off')
             tbl = ax.table(cellText=df_table.values, loc='center', cellLoc='center')
             tbl.auto_set_font_size(False)
