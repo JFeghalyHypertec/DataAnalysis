@@ -145,14 +145,6 @@ def run_core_correlation_matrix():
             st.plotly_chart(graph_fig, use_container_width=True)
 
             # Download dependency graph
-            graph_buf = BytesIO()
-            graph_fig.savefig(graph_buf, format='png')
-            st.download_button(
-                label="📥 Download Dependency Graph as PNG",
-                data=graph_buf.getvalue(),
-                file_name=f"{uploaded_file.name}_core_dependency_graph.png",
-                mime="image/png"
-            )
             html_bytes = pio.to_html(graph_fig, full_html=True).encode('utf-8')
             st.download_button(
                 label="📥 Download Dependency Graph as HTML",
