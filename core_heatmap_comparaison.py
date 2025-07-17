@@ -143,9 +143,7 @@ def run_core_heatmap_comparaison():
     ax1.set_xlabel("°C")
     for b,v in zip(bars, avgs.values):
         ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
-    ax1.text(0.5,1.05,f"Overall Avg Δ: {overall}°C", ha='center', va='center', transform=ax1.transAxes,
-             fontsize=12, fontweight='bold', bbox=dict(boxstyle="round,pad=0.3",facecolor='lightyellow',edgecolor='black'))
-
+    
     ax_table = fig.add_subplot(spec[1,:])
     ax_table.axis("off")
     table = ax_table.table(cellText=summary_df.values, colLabels=summary_df.columns, loc='center', cellLoc='center')
