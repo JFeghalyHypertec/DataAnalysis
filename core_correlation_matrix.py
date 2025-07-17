@@ -64,7 +64,7 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
     edge_trace = go.Scatter(
         x=edge_x,
         y=edge_y,
-        line=dict(width=2, color=edge_weights, colorscale='Reds', cmin=threshold, cmax=1.0),
+        line=dict(width=2, color='rgba(150, 0, 0, 0.6)'),
         hoverinfo='text',
         mode='lines',
         text=edge_texts
