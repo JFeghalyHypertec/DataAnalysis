@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 START_ROW = 3
-CORE_LIST = [f"Core {i}" for i in range(25)]  # Adjust if you have more/less cores
+CORE_LIST = [f"Core {i}" for i in range(26)]  # All 26 cores
 
 def extract_core_data(df):
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
@@ -20,7 +20,7 @@ def extract_core_data(df):
     return core_data
 
 def run_display_core_avg_table():
-    st.subheader("🌡️ Average Temperature Table by Core Group")
+    st.subheader("🌡️ Average Temperature Table for All Cores")
 
     uploaded_files = st.file_uploader(
         "📂 Upload one or more OCCT CSV Files",
@@ -38,27 +38,18 @@ def run_display_core_avg_table():
             core_df = extract_core_data(df)
             avg_temps = core_df.mean()
 
-            # Group cores: 0-5, 6-11, 12-17, 18-23, 24
-            groups = [list(range(i, min(i+6, 25))) for i in range(0, 25, 6)]
-            table_data = []
-            for group in groups:
-                row = []
-                for core in group:
-                    core_name = f"Core {core}"
-                    row.append(avg_temps.get(core_name, None))
-                # Pad row to length 6 for display consistency
-                while len(row) < 6:
-                    row.append(None)
-                table_data.append(row)
+            # Format: "Core X = avg"
+            formatted = [f"{core} = {avg_temps.get(core):.2f}°C" if pd.notnull(avg_temps.get(core)) else f"{core} = N/A"
+                         for core in CORE_LIST]
 
-            # Prepare column headers
-            col_headers = [f"Core {i}" for i in range(6)]
-            df_table = pd.DataFrame(table_data, columns=col_headers)
+            # Convert to 2 rows x 13 columns
+            rows = [formatted[i:i+13] for i in range(0, 26, 13)]
+            df_table = pd.DataFrame(rows)
 
             # Display as image
-            fig, ax = plt.subplots(figsize=(8, 2 + len(df_table)*0.5))
+            fig, ax = plt.subplots(figsize=(16, 2 + len(df_table)*0.5))
             ax.axis('off')
-            tbl = ax.table(cellText=df_table.values, colLabels=df_table.columns, loc='center', cellLoc='center')
+            tbl = ax.table(cellText=df_table.values, loc='center', cellLoc='center')
             tbl.auto_set_font_size(False)
             tbl.set_fontsize(10)
             tbl.scale(1, 1.5)
@@ -66,7 +57,7 @@ def run_display_core_avg_table():
 
             st.pyplot(fig)
 
-            # Save as image button
+            # Save as image
             buf = BytesIO()
             fig.savefig(buf, format="png")
             st.download_button(
