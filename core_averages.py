@@ -55,70 +55,60 @@ def run_display_core_avg_table():
 
             df_table = pd.DataFrame(text_rows)
 
-            # Build the 6-core-per-column vertical layout
-            col1_cores = CORE_LIST[:13]
-            col2_cores = CORE_LIST[13:]
-            col1_vals = values[:13]
-            col2_vals = values[13:]
+            # --- Second table: 6 cores per column, stacked below the first table ---
+            # Build columns of 6 cores each
+            n_cols = 6
+            n_rows = int(np.ceil(len(CORE_LIST) / n_cols))
+            col_texts = []
+            col_vals = []
+            for col in range(n_cols):
+                col_cores = CORE_LIST[col * n_rows : (col + 1) * n_rows]
+                col_values = values[col * n_rows : (col + 1) * n_rows]
+                # Pad to n_rows
+                col_cores += [""] * (n_rows - len(col_cores))
+                col_values += [np.nan] * (n_rows - len(col_values))
+                col_texts.append([
+                    f"{c} = {v:.2f}°C" if c and pd.notnull(v) else ""
+                    for c, v in zip(col_cores, col_values)
+                ])
+                col_vals.append(col_values)
+            # Transpose for table display
+            second_table_text = list(map(list, zip(*col_texts)))
+            second_table_vals = list(map(list, zip(*col_vals)))
 
-            max_len = max(len(col1_cores), len(col2_cores))
-            col1_cores += [""] * (max_len - len(col1_cores))
-            col2_cores += [""] * (max_len - len(col2_cores))
-            col1_vals += [np.nan] * (max_len - len(col1_vals))
-            col2_vals += [np.nan] * (max_len - len(col2_vals))
-
-            col1_text = [
-                f"{c} = {v:.2f}°C" if c and pd.notnull(v) else ""
-                for c, v in zip(col1_cores, col1_vals)
-            ]
-            col2_text = [
-                f"{c} = {v:.2f}°C" if c and pd.notnull(v) else ""
-                for c, v in zip(col2_cores, col2_vals)
-            ]
-            vertical_table = pd.DataFrame({
-                "Group A": col1_text,
-                "Group B": col2_text
-            })
-            vertical_vals = list(zip(col1_vals, col2_vals))
-
-            # Normalize for both tables
-            flat_vals = [v for v in values if pd.notnull(v)]
-            vmin, vmax = min(flat_vals), max(flat_vals)
-            norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-            cmap = cm.coolwarm
-
-            # Plot both tables side by side
-            fig, (ax1, ax2, cax) = plt.subplots(
-                ncols=3,
-                figsize=(16, 2 + max(len(df_table), len(vertical_table)) * 0.5),
-                gridspec_kw={"width_ratios": [6, 6, 0.3]}
+            # --- Plot both tables vertically ---
+            fig, (ax1, ax2) = plt.subplots(
+                nrows=2,
+                figsize=(12, 3 + n_rows * 0.6 + len(df_table) * 0.5)
             )
 
             ax1.axis("off")
             ax2.axis("off")
 
+            # First table (original, heatmap-style)
             tbl1 = ax1.table(cellText=df_table.values, loc="center", cellLoc="center")
-            tbl2 = ax2.table(cellText=vertical_table.values, loc="center", cellLoc="center")
-
-            # Heatmap for first table
             for i, row in enumerate(val_rows):
                 for j, val in enumerate(row):
                     color = cmap(norm(val)) if pd.notnull(val) else (1, 1, 1, 1)
                     tbl1[i, j].set_facecolor(color)
+            tbl1.auto_set_font_size(False)
+            tbl1.set_fontsize(10)
+            tbl1.scale(1, 1.5)
 
-            # Heatmap for second vertical table
-            for i, (v1, v2) in enumerate(vertical_vals):
-                color1 = cmap(norm(v1)) if pd.notnull(v1) else (1, 1, 1, 1)
-                color2 = cmap(norm(v2)) if pd.notnull(v2) else (1, 1, 1, 1)
-                tbl2[i, 0].set_facecolor(color1)
-                tbl2[i, 1].set_facecolor(color2)
+            # Second table (6 cores per column)
+            tbl2 = ax2.table(cellText=second_table_text, colLabels=[f"Col {i+1}" for i in range(n_cols)], loc="center", cellLoc="center")
+            for i, row in enumerate(second_table_vals):
+                for j, val in enumerate(row):
+                    color = cmap(norm(val)) if pd.notnull(val) else (1, 1, 1, 1)
+                    tbl2[i, j].set_facecolor(color)
+            tbl2.auto_set_font_size(False)
+            tbl2.set_fontsize(10)
+            tbl2.scale(1, 1.5)
 
-            for tbl in [tbl1, tbl2]:
-                tbl.auto_set_font_size(False)
-                tbl.set_fontsize(10)
-                tbl.scale(1, 1.5)
-
-            # Colorbar
+            # Add a colorbar to the right of the second table
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+            divider = make_axes_locatable(ax2)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
             sm = cm.ScalarMappable(cmap=cmap, norm=norm)
             sm.set_array([])
             cbar = fig.colorbar(sm, cax=cax)
@@ -139,3 +129,9 @@ def run_display_core_avg_table():
 
         except Exception as e:
             st.error(f"❗ Error processing {uploaded_file.name}: {e}")
+
+        # Choose a colormap and normalization for temperature values
+        vmin = np.nanmin(values)
+        vmax = np.nanmax(values)
+        cmap = cm.get_cmap("coolwarm")
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
