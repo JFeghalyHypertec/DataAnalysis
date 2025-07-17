@@ -21,7 +21,7 @@ def extract_core_data(df):
     return core_data
 
 def run_display_core_avg_table():
-    st.subheader("🌡️ Average Temperature Table by Core (6 per row, heatmap-style)")
+    st.subheader("🌡️ Average Temperature Table by Core")
 
     uploaded_files = st.file_uploader(
         "📂 Upload one or more OCCT CSV Files",
@@ -45,46 +45,82 @@ def run_display_core_avg_table():
                 for core, val in zip(CORE_LIST, values)
             ]
 
-            # Group into rows of 6
+            # Group into rows of 6 for original heatmap-style table
             text_rows = [texts[i:i+6] for i in range(0, len(texts), 6)]
             val_rows = [values[i:i+6] for i in range(0, len(values), 6)]
 
-            # Pad last row if needed
             while len(text_rows[-1]) < 6:
                 text_rows[-1].append("")
                 val_rows[-1].append(np.nan)
 
             df_table = pd.DataFrame(text_rows)
 
-            # Normalize values for coloring
-            flat_vals = [v for row in val_rows for v in row if not pd.isna(v)]
+            # Build the 6-core-per-column vertical layout
+            col1_cores = CORE_LIST[:13]
+            col2_cores = CORE_LIST[13:]
+            col1_vals = values[:13]
+            col2_vals = values[13:]
+
+            max_len = max(len(col1_cores), len(col2_cores))
+            col1_cores += [""] * (max_len - len(col1_cores))
+            col2_cores += [""] * (max_len - len(col2_cores))
+            col1_vals += [np.nan] * (max_len - len(col1_vals))
+            col2_vals += [np.nan] * (max_len - len(col2_vals))
+
+            col1_text = [
+                f"{c} = {v:.2f}°C" if c and pd.notnull(v) else ""
+                for c, v in zip(col1_cores, col1_vals)
+            ]
+            col2_text = [
+                f"{c} = {v:.2f}°C" if c and pd.notnull(v) else ""
+                for c, v in zip(col2_cores, col2_vals)
+            ]
+            vertical_table = pd.DataFrame({
+                "Group A": col1_text,
+                "Group B": col2_text
+            })
+            vertical_vals = list(zip(col1_vals, col2_vals))
+
+            # Normalize for both tables
+            flat_vals = [v for v in values if pd.notnull(v)]
             vmin, vmax = min(flat_vals), max(flat_vals)
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             cmap = cm.coolwarm
 
-            fig, (ax, cax) = plt.subplots(
-                ncols=2,
-                figsize=(13, 2 + len(df_table) * 0.5),
-                gridspec_kw={"width_ratios": [12, 0.3]}
+            # Plot both tables side by side
+            fig, (ax1, ax2, cax) = plt.subplots(
+                ncols=3,
+                figsize=(16, 2 + max(len(df_table), len(vertical_table)) * 0.5),
+                gridspec_kw={"width_ratios": [6, 6, 0.3]}
             )
-            ax.axis("off")
-            tbl = ax.table(cellText=df_table.values, loc="center", cellLoc="center")
 
+            ax1.axis("off")
+            ax2.axis("off")
+
+            tbl1 = ax1.table(cellText=df_table.values, loc="center", cellLoc="center")
+            tbl2 = ax2.table(cellText=vertical_table.values, loc="center", cellLoc="center")
+
+            # Heatmap for first table
             for i, row in enumerate(val_rows):
                 for j, val in enumerate(row):
-                    if pd.notnull(val):
-                        color = cmap(norm(val))
-                    else:
-                        color = (1, 1, 1, 1)
-                    tbl[i, j].set_facecolor(color)
+                    color = cmap(norm(val)) if pd.notnull(val) else (1, 1, 1, 1)
+                    tbl1[i, j].set_facecolor(color)
 
-            tbl.auto_set_font_size(False)
-            tbl.set_fontsize(10)
-            tbl.scale(1, 1.5)
+            # Heatmap for second vertical table
+            for i, (v1, v2) in enumerate(vertical_vals):
+                color1 = cmap(norm(v1)) if pd.notnull(v1) else (1, 1, 1, 1)
+                color2 = cmap(norm(v2)) if pd.notnull(v2) else (1, 1, 1, 1)
+                tbl2[i, 0].set_facecolor(color1)
+                tbl2[i, 1].set_facecolor(color2)
+
+            for tbl in [tbl1, tbl2]:
+                tbl.auto_set_font_size(False)
+                tbl.set_fontsize(10)
+                tbl.scale(1, 1.5)
 
             # Colorbar
             sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])  # Required for matplotlib < 3.1
+            sm.set_array([])
             cbar = fig.colorbar(sm, cax=cax)
             cbar.set_label("Temperature (°C)")
 
@@ -95,11 +131,11 @@ def run_display_core_avg_table():
             buf = BytesIO()
             fig.savefig(buf, format="png")
             st.download_button(
-                label=f"💾 Save Table as PNG ({uploaded_file.name})",
+                label=f"💾 Save Combined Table as PNG ({uploaded_file.name})",
                 data=buf.getvalue(),
-                file_name=f"{uploaded_file.name}_core_avg_table.png",
+                file_name=f"{uploaded_file.name}_combined_avg_tables.png",
                 mime="image/png"
             )
 
         except Exception as e:
-                st.error(f"❗ Error processing {uploaded_file.name}: {e}")
+            st.error(f"❗ Error processing {uploaded_file.name}: {e}")
