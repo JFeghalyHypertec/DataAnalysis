@@ -64,7 +64,7 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
     edge_trace = go.Scatter(
         x=edge_x,
         y=edge_y,
-        line=dict(width=1, color='rgba(150, 0, 0, 0.6)'),
+        line=dict(width=2, color=edge_weights, colorscale='Reds', cmin=threshold, cmax=1.0),
         hoverinfo='text',
         mode='lines',
         text=edge_texts
@@ -73,12 +73,14 @@ def plot_dependency_graph_plotly(G, filename, threshold=0.9):
     node_x = []
     node_y = []
     node_text = []
-
+    adj_list = {node: list(G.adj[node]) for node in G.nodes()}
     for node in G.nodes():
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
-        node_text.append(node)
+        connected = adj_list[node]
+        hover_label = f"{node}<br>Connected to: {', '.join(connected) if connected else 'None'}"
+        node_text.append(hover_label)
 
     node_trace = go.Scatter(
         x=node_x,
@@ -138,6 +140,9 @@ def run_core_correlation_matrix():
                                   min_value=round(min_corr,2), max_value=1.0, value=0.9,
                                   step=0.01)
             G = build_dependency_graph(corr_matrix, threshold=threshold)
+            if G.number_of_edges() == 0:
+                st.warning("⚠️ No edges to display at this threshold.")
+
             graph_fig = plot_dependency_graph_plotly(G, uploaded_file.name,threshold=threshold)
             st.plotly_chart(graph_fig, use_container_width=True)
 
