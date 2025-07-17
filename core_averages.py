@@ -75,7 +75,7 @@ def run_display_core_avg_table():
                         color = cmap(norm(val))
                     else:
                         color = (1, 1, 1, 1)  # white
-                    cell = tbl[i+1, j]  # i+1 because row 0 is header (even if hidden)
+                    cell = tbl[i, j]  # FIXED: use i, not i+1
                     cell.set_facecolor(color)
 
             tbl.auto_set_font_size(False)
