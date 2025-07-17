@@ -7,6 +7,7 @@ import networkx as nx
 from io import BytesIO
 import plotly.graph_objects as go
 import plotly.io as pio
+
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
 
