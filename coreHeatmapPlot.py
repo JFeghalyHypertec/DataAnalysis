@@ -42,6 +42,8 @@ def plot_heatmap(core_df, file_path, summary_table=None):
 
     # Bar Chart
     ax1 = fig.add_subplot(spec[0, 1])
+    # Reverse the order so Core 0 is at the top
+    averages = averages[::-1]
     bars = ax1.barh(averages.index, averages.values, color='gray')
     ax1.set_title("Avg Temp per Core")
     ax1.set_xlim(averages.min() - 5, averages.max() + 5)

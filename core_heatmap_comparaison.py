@@ -147,7 +147,9 @@ def run_core_heatmap_comparaison():
 
     avgs = df_diff[df_diff!=0].mean().round(2)
     ax1 = fig.add_subplot(spec[0,1])
-    colors = ['red' if x>0 else 'blue' if x<0 else 'gray' for x in avgs.values]
+    # Sort avgs so Core 0 is at the top, Core 25 at the bottom
+    avgs = avgs[::-1]
+    colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in avgs.values]
     bars = ax1.barh(avgs.index, avgs.values, color=colors)
     ax1.set_title("Avg ΔTemp per Core")
     ax1.set_xlim(avgs.min()-5, avgs.max()+5)
