@@ -62,7 +62,6 @@ def run_display_core_avg_table():
             df_table = pd.DataFrame(text_rows)
 
             # --- Second table: 6 cores per column, stacked below the first table ---
-            # Build columns of 6 cores each
             n_cols = 6
             n_rows = int(np.ceil(len(CORE_LIST) / n_cols))
             col_texts = []
@@ -70,9 +69,6 @@ def run_display_core_avg_table():
             for col in range(n_cols):
                 col_cores = CORE_LIST[col * n_rows : (col + 1) * n_rows]
                 col_values = values[col * n_rows : (col + 1) * n_rows]
-                # Pad to n_rows
-                col_cores += [""] * (n_rows - len(col_cores))
-                col_values += [np.nan] * (n_rows - len(col_values))
                 col_texts.append([
                     f"{c} = {v:.2f}°C" if c and pd.notnull(v) else ""
                     for c, v in zip(col_cores, col_values)
@@ -81,6 +77,12 @@ def run_display_core_avg_table():
             # Transpose for table display
             second_table_text = list(map(list, zip(*col_texts)))
             second_table_vals = list(map(list, zip(*col_vals)))
+
+            # Remove any rows that are all empty (from padding)
+            def row_has_core(row):
+                return any(cell != "" for cell in row)
+            second_table_text = [row for row in second_table_text if row_has_core(row)]
+            second_table_vals = [row for row in second_table_vals if row_has_core([f"{CORE_LIST[i*n_cols+j]}" if j < len(second_table_text[0]) else "" for j in range(n_cols)])]
 
             # --- Plot both tables vertically ---
             fig, (ax1, ax2) = plt.subplots(
@@ -101,8 +103,8 @@ def run_display_core_avg_table():
             tbl1.set_fontsize(10)
             tbl1.scale(1, 1.5)
 
-            # Second table (6 cores per column)
-            tbl2 = ax2.table(cellText=second_table_text, colLabels=[f"Col {i+1}" for i in range(n_cols)], loc="center", cellLoc="center")
+            # Second table (6 cores per column, no column labels)
+            tbl2 = ax2.table(cellText=second_table_text, loc="center", cellLoc="center")
             for i, row in enumerate(second_table_vals):
                 for j, val in enumerate(row):
                     label = second_table_text[i][j]
@@ -139,5 +141,3 @@ def run_display_core_avg_table():
 
         except Exception as e:
             st.error(f"❗ Error processing {uploaded_file.name}: {e}")
-
-        # Choose a colormap and normalization for temperature values
