@@ -22,7 +22,7 @@ PARAMETERS = [
     "Max Core Max Temperature", "StDev CPU Package Temperature", "StDev Core Max Temperature", 
     "Average StDev Population Core Temperature", "CPU Package Power", "Total Power In","Total Power Out", 
     "Average Core Clock", "Average Core V1D",  "TR1 Temperature", "Average SYS FAN", "Pump Fan", 
-    "Water Flow", "Water Temperature In", "Water Temperature Out"
+    "Water Flow", "Water Temperature Out", "Water Temperature In"
 ]
 UNITS = [
     "°C", "°C", "°C", "°C", "°C", "°C", "°C", "°C", "W", "W", "W",
@@ -97,8 +97,8 @@ def calculate_metrics(df):
         safe_round(avg_of_avgs(df, FAN_LIST), 0),
         safe_round(get_numeric_col(df, PUMP_FAN).mean(), 0),
         safe_round(get_numeric_col(df, WATER_FLOW).mean()),
-        safe_round(get_numeric_col(df, WATER_TEMP_IN).mean()),
-        safe_round(get_numeric_col(df, WATER_TEMP_OUT).mean())
+        safe_round(get_numeric_col(df, WATER_TEMP_OUT).mean()),
+        safe_round(get_numeric_col(df, WATER_TEMP_IN).mean())
     ]
 
 def run_excel_CPU_calculations():
