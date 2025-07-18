@@ -78,7 +78,6 @@ def run_core_heatmap_comparaison():
     if raw1 is None or raw2 is None:
         return
 
-
     file1_name, file2_name = file1.name, file2.name
 
     core1, tr1_1 = extract_core_data(raw1)
@@ -88,15 +87,43 @@ def run_core_heatmap_comparaison():
     occt1  = st.text_input(f"OCCT Version for {file1_name}:", key="occt1_cmp").strip() or "NA"
     plate2 = st.text_input(f"Plate for {file2_name}:", key="plate2_cmp").strip() or "NA"
     occt2  = st.text_input(f"OCCT Version for {file2_name}:", key="occt2_cmp").strip() or "NA"
+    
+    st.subheader("📋 Comparison Summary")
 
+    t1, t2 = core1.index.max(), core2.index.max()
+    if abs(t1 - t2) > 60:
+        st.error(f"❗ Time misalignment: {abs(t1-t2)}s")
+        return
+    
+    idx = core1.index.intersection(core2.index)
+    cols_common = core1.columns.intersection(core2.columns)
+    a1 = core1.loc[idx, cols_common]
+    a2 = core2.loc[idx, cols_common]
+    
+    if tr1_1 is not None and tr1_2 is not None:
+        normalize = st.checkbox("TR1  has been found in both file, do you want to normalize?", value=True)
+        if normalize:
+            tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
+            a1 = a1.subtract(tr1_1, axis=0)
+            a2 = a2.subtract(tr1_2, axis=0)
+            adjust_temps1 = -tr1_1[tr1_1 != 0].mean() + 21
+            adjust_temps2 = -tr1_2[tr1_2 != 0].mean() + 21
+            normalize_info = "Core temperatures normalized by TR1."
+        else:
+            normalize_info = "Core temperatures NOT normalized by TR1."
+            adjust_temps1 = adjust_temps2 = 0
+    else:
+        normalize_info = "Core temperatures NOT normalized by TR1."
+        adjust_temps1 = adjust_temps2 = 0
+        
     cpu1 = get_numeric_col(raw1, CPU_PACKAGE)
     cpu2 = get_numeric_col(raw2, CPU_PACKAGE)
-    cpu1_avg = cpu1.mean() if not cpu1.empty else np.nan
-    cpu2_avg = cpu2.mean() if not cpu2.empty else np.nan
+    cpu1_avg = cpu1.mean() + adjust_temps1 if not cpu1.empty else np.nan
+    cpu2_avg = cpu2.mean() + adjust_temps2 if not cpu2.empty else np.nan
     cpu_diff = cpu2_avg - cpu1_avg if pd.notnull(cpu1_avg) and pd.notnull(cpu2_avg) else np.nan
 
-    overall1 = np.nanmean(core1.values.flatten()) if core1.size else np.nan
-    overall2 = np.nanmean(core2.values.flatten()) if core2.size else np.nan
+    overall1 = np.nanmean(core1.values.flatten()) + adjust_temps1 if core1.size else np.nan
+    overall2 = np.nanmean(core2.values.flatten()) + adjust_temps2 if core2.size else np.nan
     overall_diff = overall2 - overall1 if pd.notnull(overall1) and pd.notnull(overall2) else np.nan
 
     wf1 = get_numeric_col(raw1, WATER_FLOW)
@@ -104,36 +131,15 @@ def run_core_heatmap_comparaison():
     wf1_avg = wf1.mean() if not wf1.empty else np.nan
     wf2_avg = wf2.mean() if not wf2.empty else np.nan
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
-
+    
     cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
     data = [
-        [file1_name, plate1, occt1, round(cpu1_avg,2) if pd.notnull(cpu1_avg) else "NA", round(overall1,2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
-        [file2_name, plate2, occt2, round(cpu2_avg,2) if pd.notnull(cpu2_avg) else "NA", round(overall2,2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
+        [file1_name, plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA", round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
+        [file2_name, plate2, occt2, round(cpu2_avg, 2) if pd.notnull(cpu2_avg) else "NA", round(overall2, 2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
         ["File2 - File1", "", "", round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA", round(overall_diff,2) if pd.notnull(overall_diff) else "NA", round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
     ]
+    
     summary_df = pd.DataFrame(data, columns=cols)
-    st.subheader("📋 Comparison Summary")
-
-    t1, t2 = core1.index.max(), core2.index.max()
-    if abs(t1 - t2) > 60:
-        st.error(f"❗ Time misalignment: {abs(t1-t2)}s")
-        return
-    idx = core1.index.intersection(core2.index)
-    cols_common = core1.columns.intersection(core2.columns)
-    a1 = core1.loc[idx, cols_common]
-    a2 = core2.loc[idx, cols_common]
-    if tr1_1 is not None and tr1_2 is not None:
-        normalize = st.checkbox("TR1  has been found in both file, do you want to normalize?", value=True)
-        if normalize:
-            tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
-            a1 = a1.subtract(tr1_1, axis=0)
-            a2 = a2.subtract(tr1_2, axis=0)
-            normalize_info = "Core temperatures normalized by TR1."
-        else:
-            normalize_info = "Core temperatures NOT normalized by TR1."
-    else:
-        normalize_info = "Core temperatures NOT normalized by TR1."
-        
     df_diff = a2 - a1
     df_diff.index = (df_diff.index/3600).round(2)
 
