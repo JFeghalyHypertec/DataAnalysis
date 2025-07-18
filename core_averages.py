@@ -5,6 +5,7 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 from io import BytesIO
 import numpy as np
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]  # All 26 cores
@@ -82,20 +83,32 @@ def run_display_core_avg_table():
             def row_has_core(row):
                 return any(cell != "" for cell in row)
             second_table_text = [row for row in second_table_text if row_has_core(row)]
-            second_table_vals = [
-                row for i, row in enumerate(second_table_vals)
-                if row_has_core([f"{CORE_LIST[i * n_cols + j]}" if j < len(row) else "" for j in range(n_cols)])
-            ]
+            second_table_vals = [row for row in second_table_vals if row_has_core([f"{CORE_LIST[i*n_cols+j]}" if j < len(second_table_text[0]) else "" for j in range(n_cols)])]
 
             # --- Plot both tables vertically ---
-            fig, (ax1, ax2) = plt.subplots(
-                nrows=2,
-                figsize=(12, 3 + n_rows * 0.6 + len(df_table) * 0.5)
+            # Transpose the first table for third display
+            transposed_text = df_table.values.T
+            transposed_vals = np.array(val_rows).T.tolist()
+
+            # --- Plot all three tables vertically ---
+            fig, (ax1, ax2, ax3) = plt.subplots(
+                nrows=3,
+                figsize=(12, 4 + n_rows * 0.6 + len(df_table) * 0.5)
             )
 
             ax1.axis("off")
             ax2.axis("off")
-            
+            # Transposed first table (displayed last)
+            ax3.axis("off")
+            tbl3 = ax3.table(cellText=transposed_text, loc="center", cellLoc="center")
+            for i, row in enumerate(transposed_vals):
+                for j, val in enumerate(row):
+                    color = cmap(norm(val)) if pd.notnull(val) else (1, 1, 1, 1)
+                    tbl3[i, j].set_facecolor(color)
+            tbl3.auto_set_font_size(False)
+            tbl3.set_fontsize(10)
+            tbl3.scale(1, 1.5)
+
             # First table (original, heatmap-style)
             tbl1 = ax1.table(cellText=df_table.values, loc="center", cellLoc="center")
             for i, row in enumerate(val_rows):
@@ -121,13 +134,13 @@ def run_display_core_avg_table():
             tbl2.scale(1, 1.5)
 
             # Add a colorbar to the right of the second table
-            from mpl_toolkits.axes_grid1 import make_axes_locatable
-            divider = make_axes_locatable(ax2)
-            cax = divider.append_axes("right", size="5%", pad=0.1)
-            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            cbar = fig.colorbar(sm, cax=cax)
-            cbar.set_label("Temperature (°C)")
+            for ax in [ax1, ax2, ax3]:
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.1)
+                sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+                sm.set_array([])
+                cbar = fig.colorbar(sm, cax=cax)
+                cbar.set_label("Temperature (°C)")
 
             plt.tight_layout()
             st.pyplot(fig)
