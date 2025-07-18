@@ -118,10 +118,17 @@ def run_core_heatmap_comparaison():
     a1 = core1.loc[idx, cols_common]
     a2 = core2.loc[idx, cols_common]
     if tr1_1 is not None and tr1_2 is not None:
-        tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
-        a1 = a1.subtract(tr1_1, axis=0)
-        a2 = a2.subtract(tr1_2, axis=0)
-
+        normalize = st.checkbox("TR1  has been found in both file, do you want to normalize?", value=True)
+        if normalize:
+            tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
+            a1 = a1.subtract(tr1_1, axis=0)
+            a2 = a2.subtract(tr1_2, axis=0)
+            normalize_info = "Core temperatures normalized by TR1."
+        else:
+            normalize_info = "Core temperatures NOT normalized by TR1."
+    else:
+        normalize_info = "Core temperatures NOT normalized by TR1."
+        
     df_diff = a2 - a1
     df_diff.index = (df_diff.index/3600).round(2)
 
@@ -129,12 +136,11 @@ def run_core_heatmap_comparaison():
     spec = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[4,1])
     ax0 = fig.add_subplot(spec[0,0])
     sns.heatmap(df_diff.T, cmap="coolwarm", center=0, cbar_kws={'label':'ΔTemp (°C)'}, ax=ax0)
-    ax0.set_title(f"Diff Heatmap: {file2_name} - {file1_name}")
+    ax0.set_title(f"Diff Heatmap: {file2_name} - {file1_name}\n{normalize_info}")
     ax0.set_xlabel("Time (h)")
     ax0.set_ylabel("CPU Cores")
 
     avgs = df_diff[df_diff!=0].mean().round(2)
-    overall = avgs.mean().round(2)
     ax1 = fig.add_subplot(spec[0,1])
     colors = ['red' if x>0 else 'blue' if x<0 else 'gray' for x in avgs.values]
     bars = ax1.barh(avgs.index, avgs.values, color=colors)
