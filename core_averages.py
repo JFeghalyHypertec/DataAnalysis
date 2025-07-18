@@ -91,23 +91,22 @@ def run_display_core_avg_table():
             transposed_vals = np.array(val_rows).T.tolist()
 
             # --- Plot all three tables vertically ---
-            fig, (ax1, ax2, ax3) = plt.subplots(
+            fig, (ax1, ax2) = plt.subplots(
                 nrows=3,
                 figsize=(12, 4 + n_rows * 0.6 + len(df_table) * 0.5)
             )
 
             ax1.axis("off")
             ax2.axis("off")
-            # Transposed first table (displayed last)
-            ax3.axis("off")
-            tbl3 = ax3.table(cellText=transposed_text, loc="center", cellLoc="center")
+            
+            tbl2 = ax2.table(cellText=transposed_text, loc="center", cellLoc="center")
             for i, row in enumerate(transposed_vals):
                 for j, val in enumerate(row):
                     color = cmap(norm(val)) if pd.notnull(val) else (1, 1, 1, 1)
-                    tbl3[i, j].set_facecolor(color)
-            tbl3.auto_set_font_size(False)
-            tbl3.set_fontsize(10)
-            tbl3.scale(1, 1.5)
+                    tbl2[i, j].set_facecolor(color)
+            tbl2.auto_set_font_size(False)
+            tbl2.set_fontsize(10)
+            tbl2.scale(1, 1.5)
 
             # First table (original, heatmap-style)
             tbl1 = ax1.table(cellText=df_table.values, loc="center", cellLoc="center")
@@ -119,22 +118,8 @@ def run_display_core_avg_table():
             tbl1.set_fontsize(10)
             tbl1.scale(1, 1.5)
 
-            # Second table (6 cores per column, no column labels)
-            tbl2 = ax2.table(cellText=second_table_text, loc="center", cellLoc="center")
-            for i, row in enumerate(second_table_vals):
-                for j, val in enumerate(row):
-                    label = second_table_text[i][j]
-                    if label and pd.notnull(val):
-                        color = cmap(norm(val))
-                    else:
-                        color = (1, 1, 1, 1)
-                    tbl2[i, j].set_facecolor(color)
-            tbl2.auto_set_font_size(False)
-            tbl2.set_fontsize(10)
-            tbl2.scale(1, 1.5)
-
             # Add a colorbar to the right of the second table
-            for ax in [ax1, ax2, ax3]:
+            for ax in [ax1, ax2]:
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.1)
                 sm = cm.ScalarMappable(cmap=cmap, norm=norm)
