@@ -2,12 +2,13 @@
 How to add a new Paramter to the returned CSV file:
 1- Add in PARAMETERS list the name of the new parameter you want to add, Example: Water Temperature
 2- Add in the UNITS list the unit of the new parameter you want to add at the SAME index as the parameter added in PARAMETERS. Example: °C
-3- Navigate to the calculate_metrics(df) function and in the values list, at the SAME exact index as where the unit and the parameter
+3- Add the name of the new parameter as a global variable and name it the same way it was named in the excel file, Example: WATER_TEMP
+4- Navigate to the calculate_metrics(df) function and in the values list, at the SAME exact index as where the unit and the parameter
    were added in the UNITS and PARAMETERS list write: safe_round(function(df, list_targeted or string_targeted), number_decimals), function represents the metric you want to calculate
    list_targeted represent the list or string that the program will loop through (example: CORE_LIST or WATER_TEMP), number_decimals: the number of decimal (1 by default).
    Example: safe_round(get_average_per_parameter(df, WATER_TEMP))
-   
 """
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -21,11 +22,11 @@ PARAMETERS = [
     "Max Core Max Temperature", "StDev CPU Package Temperature", "StDev Core Max Temperature", 
     "Average StDev Population Core Temperature", "CPU Package Power", "Total Power In","Total Power Out", 
     "Average Core Clock", "Average Core V1D",  "TR1 Temperature", "Average SYS FAN", "Pump Fan", 
-    "Water Flow", "Water Temperature"
+    "Water Flow", "Water Temperature In", "Water Temperature Out"
 ]
 UNITS = [
     "°C", "°C", "°C", "°C", "°C", "°C", "°C", "°C", "W", "W", "W",
-    "MHz", "V", "°C", "rpm", "rpm", "l/h", "°C"
+    "MHz", "V", "°C", "rpm", "rpm", "l/h", "°C", "°C"
 ]
 
 CORE_CLOCK_LIST = [f"Core {i} Clock (perf #{i%27})" for i in range(26)]
@@ -41,7 +42,8 @@ CPU_PACKAGE = "CPU Package"
 CPU_POWER = "CPU Package Power"
 CORE_MAX = "Core Max"
 WATER_FLOW = "Water Flow"
-WATER_TEMP = "Water Temperature"
+WATER_TEMP_IN = "Water Temperature"
+WATER_TEMP_OUT = "External Temperature"
 
 def safe_round(value, ndigits=1, as_int=False):
     if value is None: return None
@@ -95,7 +97,8 @@ def calculate_metrics(df):
         safe_round(avg_of_avgs(df, FAN_LIST), 0),
         safe_round(get_numeric_col(df, PUMP_FAN).mean(), 0),
         safe_round(get_numeric_col(df, WATER_FLOW).mean()),
-        safe_round(get_numeric_col(df, WATER_TEMP).mean())
+        safe_round(get_numeric_col(df, WATER_TEMP_IN).mean()),
+        safe_round(get_numeric_col(df, WATER_TEMP_OUT).mean())
     ]
 
 def run_excel_CPU_calculations():
