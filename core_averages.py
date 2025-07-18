@@ -65,7 +65,7 @@ def run_display_core_avg_table():
             fig, (ax1, cax1, ax2, cax2) = plt.subplots(
                 nrows=4,
                 figsize=(13, 5 + len(df_table) * 0.6),
-                gridspec_kw={"height_ratios": [1, 1, 0.05]}
+                gridspec_kw={"height_ratios": [1, 0.05, 1, 0.05]}
             )
             ax1.axis("off")
             ax2.axis("off")
