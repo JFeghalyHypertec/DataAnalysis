@@ -62,8 +62,8 @@ def run_display_core_avg_table():
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             cmap = cm.coolwarm
 
-            fig, (ax1, ax2, cax) = plt.subplots(
-                nrows=3,
+            fig, (ax1, cax1, ax2, cax2) = plt.subplots(
+                nrows=4,
                 figsize=(13, 5 + len(df_table) * 0.6),
                 gridspec_kw={"height_ratios": [1, 1, 0.05]}
             )
@@ -79,7 +79,13 @@ def run_display_core_avg_table():
             tbl1.auto_set_font_size(False)
             tbl1.set_fontsize(10)
             tbl1.scale(1, 1.5)
-
+            
+            # Colorbar
+            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            cbar = fig.colorbar(sm, cax=cax1, orientation='horizontal')
+            cbar.set_label("Temperature (°C)")
+            
             # Table 2: transposed (6-per-column)
             # Split into 6 columns, column-wise format
             n_cols = 6
@@ -111,7 +117,7 @@ def run_display_core_avg_table():
             # Colorbar
             sm = cm.ScalarMappable(cmap=cmap, norm=norm)
             sm.set_array([])
-            cbar = fig.colorbar(sm, cax=cax, orientation='horizontal')
+            cbar = fig.colorbar(sm, cax=cax2, orientation='horizontal')
             cbar.set_label("Temperature (°C)")
 
             plt.tight_layout()
