@@ -97,8 +97,8 @@ def calculate_metrics(df):
         safe_round(avg_of_avgs(df, FAN_LIST), 0),
         safe_round(get_numeric_col(df, PUMP_FAN).mean(), 0),
         safe_round(get_numeric_col(df, WATER_FLOW).mean()),
-        safe_round(get_numeric_col(df, WATER_TEMP_OUT).mean()),
-        safe_round(get_numeric_col(df, WATER_TEMP_IN).mean())
+        safe_round(get_numeric_col(df, WATER_TEMP_IN).mean()),
+        safe_round(get_numeric_col(df, WATER_TEMP_OUT).mean())
     ]
 
 def run_excel_CPU_calculations():
