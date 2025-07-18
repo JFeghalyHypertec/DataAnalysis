@@ -68,11 +68,16 @@ def run_core_heatmap_comparaison():
     st.info("ℹ️ Recommended: hottest test as second, coldest as first for positive ΔTemp.")
     if not file1 or not file2:
         return
-
+    
+    inverse = st.checkbox("Do you want to see reverse heatmap?", value=False)
+    if inverse:
+        file1, file2 = file2, file1
+        
     raw1 = read_uploaded_file(file1)
     raw2 = read_uploaded_file(file2)
     if raw1 is None or raw2 is None:
         return
+
 
     file1_name, file2_name = file1.name, file2.name
 
