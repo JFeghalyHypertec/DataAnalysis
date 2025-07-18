@@ -82,8 +82,9 @@ def run_display_core_avg_table():
             # Remove any rows that are all empty (from padding)
             def row_has_core(row):
                 return any(cell != "" for cell in row)
-            second_table_text = [row for row in second_table_text if row_has_core(row)]
-            second_table_vals = [row for row in second_table_vals if row_has_core([f"{CORE_LIST[i*n_cols+j]}" if j < len(second_table_text[0]) else "" for j in range(n_cols)])]
+            valid_rows = [i for i, row in enumerate(second_table_text) if row_has_core(row)]
+            second_table_text = [second_table_text[i] for i in valid_rows]
+            second_table_vals = [second_table_vals[i] for i in valid_rows]
 
             # --- Plot both tables vertically ---
             # Transpose the first table for third display
