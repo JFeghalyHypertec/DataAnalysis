@@ -1,137 +1,75 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import streamlit as st
+from io import BytesIO
+from sklearn.decomposition import PCA
 
-# ---------- Config ----------
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
 
-# ---------- Helpers ----------
 def extract_core_data(df):
-    # Identify core temperature columns
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     if not core_cols:
         raise ValueError("No core temperature columns found.")
-    # Time index
     time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
+
+    if time.iloc[0] > 1e6:
+        time = time / 1000
     time = time - time.iloc[0]
-    # Extract and clean core data
+
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
     core_data.index = time
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
-# ---------- App ----------
 def run_core_clustering():
-    st.title("📊 PCA & Clustering of CPU Test Runs")
-    st.markdown("Upload multiple OCCT/CSV/XLSX files to compare them using PCA and K-Means clustering.")
+    st.subheader("🧠 Core Temperature Clustering")
 
-    files = st.file_uploader(
-        "📂 Upload OCCT Files (select multiple)",
-        type=["csv", "xls", "xlsx"],
-        accept_multiple_files=True,
-        key="pca_clustering_upload"
-    )
-    if not files or len(files) < 2:
-        st.info("Please upload at least two files to compare.")
+    uploaded_file = st.file_uploader("📂 Upload OCCT CSV File", type=["csv"], key="clustering-upload")
+    if not uploaded_file:
         return
 
-    # Process each file to get average core temperatures
-    avg_temps = {}
-    for f in files:
-        try:
-            # Read file
-            if f.name.endswith('.csv'):
-                df = pd.read_csv(f, header=None)
-            else:
-                df = pd.read_excel(f, header=None, engine='openpyxl')
-            core_df = extract_core_data(df)
-            # Compute per-core average
-            avg = core_df.mean(axis=0)
-            avg_temps[f.name] = avg.values
-        except Exception as e:
-            st.error(f"Error processing `{f.name}`: {e}")
-            return
+    try:
+        df = pd.read_csv(uploaded_file, header=None)
+        core_df = extract_core_data(df)
 
-    # Build DataFrame: rows = file names, columns = cores
-    data = pd.DataFrame(avg_temps).T
-    data.columns = CORE_LIST
-    st.subheader("Average Core Temperatures per Test")
-    st.dataframe(data)
-    # Download average core temps
-    csv_avg = data.to_csv().encode('utf-8')
-    st.download_button(
-        label="📥 Download Average Core Temperatures (CSV)",
-        data=csv_avg,
-        file_name="avg_core_temperatures.csv",
-        mime="text/csv"
-    )
+        # Transpose: rows = cores, columns = time snapshots
+        core_profiles = core_df.T
+        core_profiles_clean = core_profiles.fillna(method='ffill', axis=1).fillna(method='bfill', axis=1)
+        core_profiles_scaled = StandardScaler().fit_transform(core_profiles_clean)
 
-    # Standardize the data
-    scaler = StandardScaler()
-    scaled = scaler.fit_transform(data)
+        # Clustering
+        k = st.slider("🔢 Number of Clusters", 2, 10, 3)
+        kmeans = KMeans(n_clusters=k, random_state=0)
+        labels = kmeans.fit_predict(core_profiles_scaled)
 
-    # PCA projection
-    pca = PCA(n_components=2)
-    pcs = pca.fit_transform(scaled)
-    pc_df = pd.DataFrame(pcs, columns=["PC1", "PC2"], index=data.index)
+        # Results
+        cluster_df = pd.DataFrame({
+            "Core": core_profiles.index,
+            "Cluster": labels
+        })
 
-    # K-Means clustering
-    k = st.slider(
-        "🔢 Number of Clusters (K)",
-        min_value=2,
-        max_value=min(len(files), 10),
-        value=3
-    )
-    km = KMeans(n_clusters=k, random_state=0)
-    clusters = km.fit_predict(scaled)
-    pc_df["Cluster"] = clusters.astype(str)
+        st.dataframe(cluster_df.sort_values("Cluster"))
 
-    # Plot PCA scatter colored by cluster
-    st.subheader("PCA Projection with K-Means Clusters")
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.scatterplot(
-        x=pc_df['PC1'],
-        y=pc_df['PC2'],
-        hue=pc_df['Cluster'],
-        palette='tab10',
-        s=100,
-        ax=ax
-    )
-    for idx, row in pc_df.iterrows():
-        ax.text(row.PC1 + 0.02, row.PC2 + 0.02, idx, fontsize=9)
-    ax.set_xlabel("Principal Component 1")
-    ax.set_ylabel("Principal Component 2")
-    ax.set_title("PCA of Test Runs (colored by cluster)")
-    st.pyplot(fig)
+        # Plot clusters (2D projection)
+        pca = PCA(n_components=2)
+        points = pca.fit_transform(core_profiles_scaled)
 
-    # Display clusters table and download
-    st.subheader("Cluster Assignments")
-    st.table(pc_df[['Cluster']])
-    csv_pca = pc_df.to_csv().encode('utf-8')
-    st.download_button(
-        label="📥 Download PCA & Cluster Data (CSV)",
-        data=csv_pca,
-        file_name="pca_cluster_data.csv",
-        mime="text/csv"
-    )
+        fig, ax = plt.subplots()
+        for cluster_id in range(k):
+            idx = labels == cluster_id
+            ax.scatter(points[idx, 0], points[idx, 1], label=f"Cluster {cluster_id}")
+        for i, name in enumerate(core_profiles.index):
+            ax.annotate(name, (points[i, 0], points[i, 1]), fontsize=8, alpha=0.6)
+        ax.set_title(f"🌀 Core Clusters (K={k})")
+        ax.set_xlabel("PCA 1")
+        ax.set_ylabel("PCA 2")
+        ax.legend()
+        st.pyplot(fig)
 
-    # Show explained variance and download
-    st.subheader("PCA Explained Variance Ratio")
-    ev_df = pd.DataFrame(
-        pca.explained_variance_ratio_.reshape(1, -1),
-        columns=[f"PC{i+1}" for i in range(len(pca.explained_variance_ratio_))]
-    )
-    st.write(ev_df)
-    csv_ev = ev_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Download Explained Variance (CSV)",
-        data=csv_ev,
-        file_name="explained_variance.csv",
-        mime="text/csv"
-    )
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
