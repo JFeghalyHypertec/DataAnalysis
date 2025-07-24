@@ -21,7 +21,7 @@ def extract_core_data(df):
     return core_data
 
 def run_display_core_avg_table():
-    st.subheader("🌡️ Average Temperature Table by Core (6 per row + transposed)")
+    st.subheader("🌡️ Average Temperature Table by Core")
 
     uploaded_files = st.file_uploader(
         "📂 Upload one or more OCCT CSV Files",
