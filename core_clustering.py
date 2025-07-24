@@ -63,6 +63,14 @@ def main():
     data.columns = CORE_LIST
     st.subheader("Average Core Temperatures per Test")
     st.dataframe(data)
+    # Download average core temps
+    csv_avg = data.to_csv().encode('utf-8')
+    st.download_button(
+        label="📥 Download Average Core Temperatures (CSV)",
+        data=csv_avg,
+        file_name="avg_core_temperatures.csv",
+        mime="text/csv"
+    )
 
     # Standardize the data
     scaler = StandardScaler()
@@ -102,13 +110,31 @@ def main():
     ax.set_title("PCA of Test Runs (colored by cluster)")
     st.pyplot(fig)
 
-    # Display clusters table
+    # Display clusters table and download
     st.subheader("Cluster Assignments")
     st.table(pc_df[['Cluster']])
+    csv_pca = pc_df.to_csv().encode('utf-8')
+    st.download_button(
+        label="📥 Download PCA & Cluster Data (CSV)",
+        data=csv_pca,
+        file_name="pca_cluster_data.csv",
+        mime="text/csv"
+    )
 
-    # Show explained variance
+    # Show explained variance and download
     st.subheader("PCA Explained Variance Ratio")
-    st.write(pca.explained_variance_ratio_)
+    ev_df = pd.DataFrame(
+        pca.explained_variance_ratio_.reshape(1, -1),
+        columns=[f"PC{i+1}" for i in range(len(pca.explained_variance_ratio_))]
+    )
+    st.write(ev_df)
+    csv_ev = ev_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Download Explained Variance (CSV)",
+        data=csv_ev,
+        file_name="explained_variance.csv",
+        mime="text/csv"
+    )
 
 if __name__ == "__main__":
     main()
