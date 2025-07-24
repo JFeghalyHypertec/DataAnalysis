@@ -27,7 +27,7 @@ def extract_core_data(df):
     return core_data
 
 # ---------- App ----------
-def main():
+def run_core_clustering():
     st.title("📊 PCA & Clustering of CPU Test Runs")
     st.markdown("Upload multiple OCCT/CSV/XLSX files to compare them using PCA and K-Means clustering.")
 
@@ -135,6 +135,3 @@ def main():
         file_name="explained_variance.csv",
         mime="text/csv"
     )
-
-if __name__ == "__main__":
-    main()
