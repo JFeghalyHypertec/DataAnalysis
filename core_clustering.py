@@ -24,7 +24,7 @@ def extract_core_data(df):
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
-def run_core_pca_clustering():
+def run_core_clustering():
     st.subheader("📊 PCA + Core Clustering")
 
     uploaded_file = st.file_uploader("📂 Upload OCCT CSV File", type=["csv"], key="pca-cluster-upload")
