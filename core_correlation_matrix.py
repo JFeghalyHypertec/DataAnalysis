@@ -24,16 +24,18 @@ def extract_core_data(df):
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
-def generate_core_correlation_plot(core_df, filename):
+
+def generate_core_correlation_plot(core_df, title):
     corr = core_df.corr()
     fig, ax = plt.subplots(figsize=(10, 8))
     formatted_corr = corr.applymap(lambda x: f"{x:.1g}" if pd.notnull(x) else "")
     sns.heatmap(corr, annot=formatted_corr, fmt="", cmap='coolwarm',
                 vmin=-1, vmax=1, square=True, annot_kws={"size": 12},
                 cbar_kws={'label': 'Correlation Coefficient'}, ax=ax)
-    ax.set_title(f"Core Correlation Matrix\n{filename}", fontsize=14, fontweight='bold')
+    ax.set_title(title, fontsize=14, fontweight='bold')
     plt.tight_layout()
     return fig, corr
+
 
 def build_dependency_graph(corr_matrix, threshold=0.9):
     G = nx.Graph()
@@ -47,150 +49,106 @@ def build_dependency_graph(corr_matrix, threshold=0.9):
                 G.add_edge(c1, c2, weight=round(corr_val, 2))
     return G
 
-def plot_dependency_graph_plotly(G, filename, threshold=0.9):
-    pos = nx.spring_layout(G, seed=42, k=0.5, iterations=100)
-    edge_x = []
-    edge_y = []
-    edge_weights = []
-    edge_texts = []
 
+def plot_dependency_graph_plotly(G, title, threshold=0.9):
+    pos = nx.spring_layout(G, seed=42, k=0.5, iterations=100)
+    # build traces as before...
+    edge_x, edge_y, edge_weights, edge_texts = [], [], [], []
     for u, v, data in G.edges(data=True):
-        x0, y0 = pos[u]
-        x1, y1 = pos[v]
-        edge_x += [x0, x1, None]
-        edge_y += [y0, y1, None]
+        x0, y0 = pos[u]; x1, y1 = pos[v]
+        edge_x += [x0, x1, None]; edge_y += [y0, y1, None]
         edge_weights.append(data['weight'])
         edge_texts.append(f"{u} ↔ {v}<br>Corr: {data['weight']:.2f}")
-
     edge_trace = go.Scatter(
-        x=edge_x,
-        y=edge_y,
-        line=dict(width=2, color='rgba(150, 0, 0, 0.6)'),
-        hoverinfo='text',
-        mode='lines',
-        text=edge_texts
+        x=edge_x, y=edge_y, mode='lines', hoverinfo='text', text=edge_texts,
+        line=dict(width=2, color='rgba(150, 0, 0, 0.6)')
     )
-
-    edge_annotations = []
-    for u, v, data in G.edges(data=True):
-        x0, y0 = pos[u]
-        x1, y1 = pos[v]
-        edge_x_mid = (x0 + x1) / 2
-        edge_y_mid = (y0 + y1) / 2
-        weight = round(data['weight'], 2)
-        edge_annotations.append(
-            dict(
-                x=edge_x_mid, y=edge_y_mid,
-                text=str(weight), showarrow=False,
-                font=dict(size=10, color='gray'),
-                xanchor='center', yanchor='middle'
-            )
-        )
-
-    node_x = []
-    node_y = []
-    node_hover = []
-    node_labels = []
+    # node traces
+    node_x, node_y, node_hover, node_labels = [], [], [], []
     for node in G.nodes():
         x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        connections = [
-            f"{nbr} (Corr: {G[node][nbr]['weight']:.2f})"
-            for nbr in G.adj[node]
-        ]
+        node_x.append(x); node_y.append(y)
+        connections = [f"{nbr} (Corr: {G[node][nbr]['weight']:.2f})" for nbr in G.adj[node]]
         hover_text = f"{node}<br>Connected to: " + (", ".join(connections) if connections else "None")
         node_hover.append(hover_text)
-        node_labels.append(node)  # For text shown on graph (optional)
-
+        node_labels.append(node)
     node_trace = go.Scatter(
-        x=node_x,
-        y=node_y,
-        mode='markers',
-        hoverinfo='text',
-        text=node_labels,
-        hovertext=node_hover,
-        marker=dict(
-            color='skyblue',
-            size=20,
-            line=dict(width=2, color='DarkSlateGrey')
-        )
+        x=node_x, y=node_y, mode='markers+text', hoverinfo='text', text=node_labels,
+        textposition='top center', marker=dict(size=20, line=dict(width=2, color='DarkSlateGrey')),
+        hovertext=node_hover
     )
-    # Offset for labels above nodes
-    label_offset = 0.07  # Adjust as needed for clarity
-    node_label_x = node_x
-    node_label_y = [y + label_offset for y in node_y]
-
-    node_label_trace = go.Scatter(
-        x=node_label_x,
-        y=node_label_y,
-        mode='text',
-        text=node_labels,
-        textposition='top center',
-        hoverinfo='skip',
-        showlegend=False,
-        textfont=dict(size=14, color='black')
-    )
-    
-    fig = go.Figure(data=[edge_trace, node_trace, node_label_trace],
+    fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
-                        title=dict(
-                            text=f"🔗 Core Dependency Graph: {filename} at threshold={threshold}",
-                            font=dict(size=16)
-                        ),
-                        showlegend=False,
-                        hovermode='closest',
-                        margin=dict(b=20, l=5, r=5, t=40),
+                        title=dict(text=f"🔗 {title} (thr={threshold})", font=dict(size=16)),
+                        showlegend=False, hovermode='closest',
+                        margin=dict(b=20, l=5, r=5, t=40), height=700,
                         xaxis=dict(showgrid=False, zeroline=False),
-                        yaxis=dict(showgrid=False, zeroline=False),
-                        height=700,
+                        yaxis=dict(showgrid=False, zeroline=False)
                     ))
     return fig
 
+
 def run_core_correlation_matrix():
-    st.subheader("🧩 Core Correlation Matrix & Dependency Graph")
+    st.subheader("🧩 Multi-Test Core Correlation & Dependency Graphs")
 
-    uploaded_file = st.file_uploader("📂 Upload OCCT CSV File", type=["csv"], key="corr-upload")
-    if uploaded_file:
-        try:
-            df = pd.read_csv(uploaded_file, header=None)
-            core_df = extract_core_data(df)
+    uploaded_files = st.file_uploader(
+        "📂 Upload OCCT CSV Files (multiple)", type=["csv"], accept_multiple_files=True, key="corr-upload"
+    )
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            st.markdown(f"---\n### Results for **{uploaded_file.name}**")
+            try:
+                df = pd.read_csv(uploaded_file, header=None)
+                core_df = extract_core_data(df)
 
-            # Correlation heatmap
-            corr_fig, corr_matrix = generate_core_correlation_plot(core_df, uploaded_file.name)
-            st.pyplot(corr_fig)
+                # Correlation heatmap
+                corr_fig, corr_matrix = generate_core_correlation_plot(
+                    core_df, f"Core Correlation: {uploaded_file.name}"
+                )
+                st.pyplot(corr_fig)
 
-            # Download correlation matrix
-            corr_buf = BytesIO()
-            corr_fig.savefig(corr_buf, format="png")
-            st.download_button(
-                label="💾 Download Correlation Matrix as PNG",
-                data=corr_buf.getvalue(),
-                file_name=f"{uploaded_file.name.replace('.', '_')}_correlation_matrix.png",
-                mime="image/png"
-            )
+                # Download correlation matrix
+                corr_buf = BytesIO()
+                corr_fig.savefig(corr_buf, format="png")
+                st.download_button(
+                    label="💾 Download Heatmap PNG",
+                    data=corr_buf.getvalue(),
+                    file_name=f"{uploaded_file.name.replace('.', '_')}_heatmap.png",
+                    mime="image/png",
+                    key=f"dl-heatmap-{uploaded_file.name}"
+                )
 
-            # Threshold for dependency graph
-            corr_values = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).stack()
-            min_corr = float(corr_values.min())
-            threshold = st.slider("📏 Correlation Threshold for Dependency Graph", 
-                                  min_value=round(min_corr,2), max_value=1.0, value=0.9,
-                                  step=0.01)
-            G = build_dependency_graph(corr_matrix, threshold=threshold)
-            if G.number_of_edges() == 0:
-                st.warning("⚠️ No edges to display at this threshold.")
+                # Dependency graph threshold
+                corr_values = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).stack()
+                min_corr = float(corr_values.min())
+                thr_key = f"thr-{uploaded_file.name}"
+                threshold = st.slider(
+                    f"Threshold for {uploaded_file.name}",
+                    min_value=round(min_corr, 2), max_value=1.0, value=0.9,
+                    step=0.01, key=thr_key
+                )
+                G = build_dependency_graph(corr_matrix, threshold=threshold)
+                if G.number_of_edges() == 0:
+                    st.warning("⚠️ No edges to display at this threshold.")
 
-            graph_fig = plot_dependency_graph_plotly(G, uploaded_file.name,threshold=threshold)
-            st.plotly_chart(graph_fig, use_container_width=True)
+                graph_fig = plot_dependency_graph_plotly(
+                    G, f"Dependency Graph: {uploaded_file.name}", threshold=threshold
+                )
+                st.plotly_chart(graph_fig, use_container_width=True)
 
-            # Download dependency graph
-            html_bytes = pio.to_html(graph_fig, full_html=True).encode('utf-8')
-            st.download_button(
-                label="📥 Download Dependency Graph as HTML",
-                data=html_bytes,
-                file_name=f"{uploaded_file.name}_core_dependency_graph.html",
-                mime="text/html"
-            )
+                # Download dependency graph
+                html_bytes = pio.to_html(graph_fig, full_html=True).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Graph HTML",
+                    data=html_bytes,
+                    file_name=f"{uploaded_file.name}_dependency_graph.html",
+                    mime="text/html",
+                    key=f"dl-graph-{uploaded_file.name}"
+                )
 
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
+            except Exception as e:
+                st.error(f"❌ Error processing {uploaded_file.name}: {e}")
+
+
+if __name__ == "__main__":
+    run_core_correlation_matrix()
