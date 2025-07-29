@@ -8,6 +8,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from scipy.spatial.distance import pdist, squareform
 from io import BytesIO
+from mpl_toolkits.mplot3d import Axes3D  # for 3D plotting
 
 START_ROW = 3
 CORE_LIST = [f"Core {i}" for i in range(26)]
@@ -25,7 +26,8 @@ def extract_core_data(df):
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
-# Elbow and Silhouette utilities
+# Utility functions for optimal k
+
 def compute_elbow_curve(data, max_k=10):
     inertias = []
     for k in range(1, max_k + 1):
@@ -33,6 +35,7 @@ def compute_elbow_curve(data, max_k=10):
         km.fit(data)
         inertias.append(km.inertia_)
     return inertias
+
 
 def compute_silhouette_scores(data, max_k=10):
     scores = []
@@ -42,28 +45,32 @@ def compute_silhouette_scores(data, max_k=10):
         scores.append(silhouette_score(data, labels))
     return scores
 
-# Main function
+# Main clustering function with 2D/3D toggle
 
 def run_core_clustering():
-    st.subheader("📊 PCA + Core Clustering")
+    st.subheader("📊 PCA + Core Clustering with 2D/3D Toggle")
 
     uploaded_file = st.file_uploader("📂 Upload OCCT CSV File", type=["csv"], key="pca-cluster-upload")
     if not uploaded_file:
         return
 
     try:
-        # Read and clean data
+        # Load and clean data
         df = pd.read_csv(uploaded_file, header=None)
         core_df = extract_core_data(df).dropna(axis=1, how='any')
         if core_df.shape[1] < 2:
             st.warning("📉 Not enough valid core columns after cleaning.")
             return
 
-        # PCA reduction
-        pca = PCA(n_components=2)
+        # PCA dimension choice
+        dim = st.radio("🔢 PCA Plot Dimension", ["2D", "3D"], index=0)
+        n_components = 2 if dim == "2D" else 3
+
+        # PCA transformation
+        pca = PCA(n_components=n_components)
         reduced = pca.fit_transform(core_df.T)
 
-        # Suggest optimal k via silhouette
+        # Optimal k suggestion via silhouette
         st.subheader("📌 Suggested Optimal Cluster Count")
         max_k = st.slider("🔍 Max clusters to test", 3, min(15, len(core_df.columns)), min(8, len(core_df.columns)), key="max-k")
         sil_scores = compute_silhouette_scores(reduced, max_k=max_k)
@@ -72,7 +79,7 @@ def run_core_clustering():
         best_score = max(sil_scores)
         st.markdown(f"🎯 **Optimal k:** {best_k} (Silhouette = {best_score:.3f})")
 
-        # Plot silhouette vs k
+        # Plot silhouette curve
         fig_sil, ax_sil = plt.subplots()
         ax_sil.plot(ks, sil_scores, marker='o')
         ax_sil.set_title("Silhouette Score vs. Number of Clusters")
@@ -80,25 +87,38 @@ def run_core_clustering():
         ax_sil.set_ylabel("Silhouette Score")
         st.pyplot(fig_sil)
 
-        # Select clusters (default to best_k)
+        # Cluster count selection (default to best_k)
         n_clusters = st.slider("🔢 Number of Clusters", 2, min(10, len(core_df.columns)), value=best_k, key="n-clusters")
 
-        # KMeans clustering and plotting
+        # Perform KMeans clustering
         km = KMeans(n_clusters=n_clusters, random_state=0)
         labels = km.fit_predict(reduced)
         cores = list(core_df.columns)
 
-        fig1, ax1 = plt.subplots()
-        scatter = ax1.scatter(reduced[:, 0], reduced[:, 1], c=labels, cmap="tab10", s=100)
-        for i, core in enumerate(cores):
-            ax1.annotate(core, (reduced[i, 0], reduced[i, 1]), fontsize=9, ha='right')
-        ax1.set_title("PCA Projection with Core Clusters")
-        ax1.set_xlabel("PC 1")
-        ax1.set_ylabel("PC 2")
-        ax1.grid(True)
-        st.pyplot(fig1)
+        # Plot PCA scatter (2D or 3D)
+        if dim == "2D":
+            fig, ax = plt.subplots()
+            sc = ax.scatter(reduced[:,0], reduced[:,1], c=labels, cmap="tab10", s=100)
+            for i, core in enumerate(cores):
+                ax.annotate(core, (reduced[i,0], reduced[i,1]), fontsize=9, ha='right')
+            ax.set_xlabel("PC 1")
+            ax.set_ylabel("PC 2")
+            ax.set_title("2D PCA Projection with Core Clusters")
+            ax.grid(True)
+            st.pyplot(fig)
+        else:
+            fig = plt.figure(figsize=(8,6))
+            ax3d = fig.add_subplot(111, projection='3d')
+            sc3d = ax3d.scatter(reduced[:,0], reduced[:,1], reduced[:,2], c=labels, cmap="tab10", s=100)
+            for i, core in enumerate(cores):
+                ax3d.text(reduced[i,0], reduced[i,1], reduced[i,2], core, fontsize=8)
+            ax3d.set_xlabel("PC 1")
+            ax3d.set_ylabel("PC 2")
+            ax3d.set_zlabel("PC 3")
+            ax3d.set_title("3D PCA Projection with Core Clusters")
+            st.pyplot(fig)
 
-        # Show and download cluster assignments
+        # Display cluster assignments
         cluster_df = pd.DataFrame({"Core": cores, "Cluster": labels}).sort_values("Cluster")
         st.dataframe(cluster_df)
         st.download_button("📥 Download Clusters CSV", data=cluster_df.to_csv(index=False).encode(),
