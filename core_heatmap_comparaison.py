@@ -174,5 +174,5 @@ def run_core_heatmap_comparaison():
 
     st.pyplot(fig)
     buf = BytesIO()
-    fig.savefig(buf, format='png')
+    fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.1)
     st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(), file_name="difference_heatmap.png", mime="image/png")
