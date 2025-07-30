@@ -28,8 +28,8 @@ def plot_heatmap(core_df, file_path, summary_table=None):
     overall_avg = averages.mean()
 
     # Increased height for the embedded table
-    fig = plt.figure(figsize=(16, 10))
-    spec = gridspec.GridSpec(ncols=2, nrows=2, width_ratios=[4, 1], height_ratios=[4, 1])
+    fig = plt.figure(figsize=(16, 12))
+    spec = gridspec.GridSpec(ncols=2, nrows=2, width_ratios=[4, 1], height_ratios=[4, 2])
 
     # Heatmap
     ax0 = fig.add_subplot(spec[0, 0])
@@ -65,6 +65,7 @@ def plot_heatmap(core_df, file_path, summary_table=None):
         table.scale(1.5, 1.5)
 
     plt.tight_layout()
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
     return fig
 
 def get_col(df, name):
