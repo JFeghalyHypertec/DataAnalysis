@@ -170,7 +170,7 @@ def run_core_heatmap_comparaison():
         ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
     # Shift bar chart to the right
     pos = ax1.get_position()
-    ax1.set_position([pos.x0 + 1, pos.y0, pos.width, pos.height])
+    ax1.set_position([pos.x0 + 0.3, pos.y0, pos.width, pos.height])
 
     ax_table = fig.add_subplot(spec[1,:])
     ax_table.axis("off")
