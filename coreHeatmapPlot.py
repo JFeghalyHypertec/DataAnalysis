@@ -61,8 +61,8 @@ def plot_heatmap(core_df, file_path, summary_table=None):
         col_labels = summary_table.columns
         table = ax2.table(cellText=cell_text, colLabels=col_labels, cellLoc='center', loc='center')
         table.auto_set_font_size(False)
-        table.set_fontsize(10)
-        table.scale(1.2, 1.2)
+        table.set_fontsize(14)
+        table.scale(1.5, 1.5)
 
     plt.tight_layout()
     return fig
@@ -140,7 +140,7 @@ def run_core_heatmap_plot():
 
                 # Save button with dynamic filename
                 buf = BytesIO()
-                fig.savefig(buf, format="png")
+                fig.savefig(buf, format="png", bbox_inches='tight', pad_inches=0.1)
                 st.download_button(
                     label=f"💾 Download Heatmap for {file_name}",
                     data=buf.getvalue(),

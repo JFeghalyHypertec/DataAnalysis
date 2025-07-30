@@ -125,6 +125,7 @@ def run_excel_CPU_calculations():
                 continue
 
             values = calculate_metrics(df)
+            file_name = file_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
             combined_rows.append([file_name] + values)
 
         # Display results
