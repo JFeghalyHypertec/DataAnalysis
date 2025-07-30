@@ -13,7 +13,6 @@ TR1 = "TR1 Temperature (System Board)"
 CPU_PACKAGE = "CPU Package"
 WATER_FLOW = "Water Flow"
 
-
 def extract_core_data(df):
     time_col = 0
     time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
@@ -37,13 +36,11 @@ def extract_core_data(df):
     grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
     return grouped_core, tr1_grouped
 
-
 def get_col(df, name):
     try:
         return next(i for i in range(df.shape[1]) if df.iloc[1, i] == name)
     except StopIteration:
         return None
-
 
 def get_numeric_col(df, name):
     col_idx = get_col(df, name)
@@ -51,7 +48,6 @@ def get_numeric_col(df, name):
         return pd.Series(dtype=float)
     vals = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
     return vals[(vals != 0) & (~vals.isna())]
-
 
 def read_uploaded_file(uploaded_file):
     try:
@@ -62,9 +58,8 @@ def read_uploaded_file(uploaded_file):
         else:
             raise ValueError(f"Unsupported file type: {uploaded_file.name}")
     except Exception as e:
-        st.error(f"❌ Failed to read file `{uploaded_file.name}`: {e}")
+        st.error(f"❌ Failed to read file {uploaded_file.name}: {e}")
         return None
-
 
 def run_core_heatmap_comparaison():
     st.header("🔥 Core Difference Heatmap")
@@ -137,14 +132,13 @@ def run_core_heatmap_comparaison():
     wf2_avg = wf2.mean() if not wf2.empty else np.nan
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
     
-    cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temp", "Overall Avg Core Temp", WATER_FLOW]
-    file1_name = file1_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
-    file2_name = file2_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
+    cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
     data = [
-        [file1_name[5:], plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA", round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
-        [file2_name[5:], plate2, occt2, round(cpu2_avg, 2) if pd.notnull(cpu2_avg) else "NA", round(overall2, 2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
+        [file1_name, plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA", round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
+        [file2_name, plate2, occt2, round(cpu2_avg, 2) if pd.notnull(cpu2_avg) else "NA", round(overall2, 2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
         ["File2 - File1", "", "", round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA", round(overall_diff,2) if pd.notnull(overall_diff) else "NA", round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
     ]
+    
     summary_df = pd.DataFrame(data, columns=cols)
     df_diff = a2 - a1
     df_diff.index = (df_diff.index/3600).round(2)
@@ -157,9 +151,9 @@ def run_core_heatmap_comparaison():
     ax0.set_xlabel("Time (h)")
     ax0.set_ylabel("CPU Cores")
 
-    # Bar chart subplot
     avgs = df_diff[df_diff!=0].mean().round(2)
     ax1 = fig.add_subplot(spec[0,1])
+    # Sort avgs so Core 0 is at the top, Core 25 at the bottom
     avgs = avgs[::-1]
     colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in avgs.values]
     bars = ax1.barh(avgs.index, avgs.values, color=colors)
@@ -168,23 +162,15 @@ def run_core_heatmap_comparaison():
     ax1.set_xlabel("°C")
     for b,v in zip(bars, avgs.values):
         ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
-    # Shift bar chart to the right
-    pos = ax1.get_position()
-    ax1.set_position([pos.x0 + 0.5, pos.y0, pos.width, pos.height])
-
+    
     ax_table = fig.add_subplot(spec[1,:])
     ax_table.axis("off")
     table = ax_table.table(cellText=summary_df.values, colLabels=summary_df.columns, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
-    table.set_fontsize(14)
-    table.scale(1.5, 1.5)
-
-    plt.tight_layout()
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2)
 
     st.pyplot(fig)
     buf = BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+    fig.savefig(buf, format='png')
     st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(), file_name="difference_heatmap.png", mime="image/png")
-
-if __name__ == '__main__':
-    run_core_heatmap_comparaison()
