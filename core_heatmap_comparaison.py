@@ -133,9 +133,11 @@ def run_core_heatmap_comparaison():
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
     
     cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
+    file1_name = file1_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
+    file2_name = file2_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
     data = [
-        [file1_name, plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA", round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
-        [file2_name, plate2, occt2, round(cpu2_avg, 2) if pd.notnull(cpu2_avg) else "NA", round(overall2, 2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
+        [file1_name[5:], plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA", round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
+        [file2_name[5:], plate2, occt2, round(cpu2_avg, 2) if pd.notnull(cpu2_avg) else "NA", round(overall2, 2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
         ["File2 - File1", "", "", round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA", round(overall_diff,2) if pd.notnull(overall_diff) else "NA", round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
     ]
     
