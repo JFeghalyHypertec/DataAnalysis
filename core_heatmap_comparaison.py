@@ -13,6 +13,7 @@ TR1 = "TR1 Temperature (System Board)"
 CPU_PACKAGE = "CPU Package"
 WATER_FLOW = "Water Flow"
 
+
 def extract_core_data(df):
     time_col = 0
     time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
@@ -36,11 +37,13 @@ def extract_core_data(df):
     grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
     return grouped_core, tr1_grouped
 
+
 def get_col(df, name):
     try:
         return next(i for i in range(df.shape[1]) if df.iloc[1, i] == name)
     except StopIteration:
         return None
+
 
 def get_numeric_col(df, name):
     col_idx = get_col(df, name)
@@ -48,6 +51,7 @@ def get_numeric_col(df, name):
         return pd.Series(dtype=float)
     vals = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
     return vals[(vals != 0) & (~vals.isna())]
+
 
 def read_uploaded_file(uploaded_file):
     try:
@@ -60,6 +64,7 @@ def read_uploaded_file(uploaded_file):
     except Exception as e:
         st.error(f"❌ Failed to read file `{uploaded_file.name}`: {e}")
         return None
+
 
 def run_core_heatmap_comparaison():
     st.header("🔥 Core Difference Heatmap")
@@ -90,16 +95,19 @@ def run_core_heatmap_comparaison():
     
     st.subheader("📋 Comparison Summary")
 
+    # Check time alignment
     t1, t2 = core1.index.max(), core2.index.max()
     if abs(t1 - t2) > 60:
         st.error(f"❗ Time misalignment: {abs(t1-t2)}s")
         return
     
+    # Align on common index and columns
     idx = core1.index.intersection(core2.index)
     cols_common = core1.columns.intersection(core2.columns)
     a1 = core1.loc[idx, cols_common]
     a2 = core2.loc[idx, cols_common]
     
+    # Optional TR1 normalization
     if tr1_1 is not None and tr1_2 is not None:
         normalize = st.checkbox("TR1  has been found in both file, do you want to normalize?", value=True)
         if normalize:
@@ -116,6 +124,7 @@ def run_core_heatmap_comparaison():
         normalize_info = "Core temperatures NOT normalized by TR1."
         adjust_temps1 = adjust_temps2 = 0
         
+    # CPU package and water flow differences
     cpu1 = get_numeric_col(raw1, CPU_PACKAGE)
     cpu2 = get_numeric_col(raw2, CPU_PACKAGE)
     cpu1_avg = cpu1.mean() + adjust_temps1 if not cpu1.empty else np.nan
@@ -132,6 +141,7 @@ def run_core_heatmap_comparaison():
     wf2_avg = wf2.mean() if not wf2.empty else np.nan
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
     
+    # Build summary table
     cols = ["", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
     data = [
         [file1_name, plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA", round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
@@ -143,6 +153,7 @@ def run_core_heatmap_comparaison():
     df_diff = a2 - a1
     df_diff.index = (df_diff.index/3600).round(2)
 
+    # Plotting
     fig = plt.figure(figsize=(16,12))
     spec = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[4,1])
     ax0 = fig.add_subplot(spec[0,0])
@@ -153,7 +164,6 @@ def run_core_heatmap_comparaison():
 
     avgs = df_diff[df_diff!=0].mean().round(2)
     ax1 = fig.add_subplot(spec[0,1])
-    # Sort avgs so Core 0 is at the top, Core 25 at the bottom
     avgs = avgs[::-1]
     colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in avgs.values]
     bars = ax1.barh(avgs.index, avgs.values, color=colors)
@@ -167,10 +177,18 @@ def run_core_heatmap_comparaison():
     ax_table.axis("off")
     table = ax_table.table(cellText=summary_df.values, colLabels=summary_df.columns, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.2)
+    table.set_fontsize(14)            # Increased font size for readability
+    table.scale(1.5, 1.5)             # Scale up cells
+
+    plt.tight_layout()                # Tight layout to reduce whitespace
 
     st.pyplot(fig)
+    
+    # Save with tight bounding box to crop extra whitespace
     buf = BytesIO()
-    fig.savefig(buf, format='png')
+    fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
     st.download_button("📥 Download Difference Heatmap", data=buf.getvalue(), file_name="difference_heatmap.png", mime="image/png")
+
+# To run in Streamlit
+if __name__ == '__main__':
+    run_core_heatmap_comparaison()
