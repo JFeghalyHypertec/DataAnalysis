@@ -148,7 +148,3 @@ def run_core_correlation_matrix():
 
             except Exception as e:
                 st.error(f"❌ Error processing {uploaded_file.name}: {e}")
-
-
-if __name__ == "__main__":
-    run_core_correlation_matrix()
