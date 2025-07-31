@@ -138,5 +138,5 @@ def run_excel_CPU_calculations():
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             pd.DataFrame(combined_rows).to_excel(writer, index=False, header=False)
         output.seek(0)
-        f_name = "results.xlsx" if len(uploaded_files) > 1 else f"results {uploaded_files[0]}.xlsx"
+        f_name = "results.xlsx"
         st.download_button("📥 Download Excel File", data=output, file_name=f_name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
