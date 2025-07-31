@@ -169,7 +169,7 @@ def run_core_heatmap_comparaison():
     ax_table.axis("off")
     table = ax_table.table(cellText=summary_df.values, colLabels=summary_df.columns, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
-    table.set_fontsize(16.5)
+    table.set_fontsize(16)
     table.scale(1.5, 1.5)
 
     st.pyplot(fig)
