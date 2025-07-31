@@ -61,7 +61,7 @@ def plot_heatmap(core_df, file_path, summary_table=None):
         col_labels = summary_table.columns
         table = ax2.table(cellText=cell_text, colLabels=col_labels, cellLoc='center', loc='center')
         table.auto_set_font_size(False)
-        table.set_fontsize(15)
+        table.set_fontsize(14)
         table.scale(1.5, 1.5)
 
     plt.tight_layout()
