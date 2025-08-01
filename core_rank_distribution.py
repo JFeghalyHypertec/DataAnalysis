@@ -17,13 +17,15 @@ def run_core_rank_distribution():
         accept_multiple_files=True,
         key="set1"
     )
+    label1 = st.text_input("Label for Set 1:", "Set 1")
+    
     uploaded_files_2 = st.file_uploader(
         "Upload one or more CPU test files (Set 2)",
         type=["csv", "xls", "xlsx"],
         accept_multiple_files=True,
         key="set2"
     )
-
+    label2 = st.text_input("Label for Set 2:", "Set 2")
     if not uploaded_files_1:
         st.info("Please upload at least one file for Set 1 to get started.")
         st.stop()
@@ -76,9 +78,9 @@ def run_core_rank_distribution():
     fig, ax = plt.subplots(figsize=(8, 4))
     positions = list(range(1, len(core_names)+1))
     width = 0.4
-    ax.bar([p - width/2 for p in positions], counts1.values, width=width, label="Set 1")
+    ax.bar([p - width/2 for p in positions], counts1.values, width=width, label=label1, color="blue")
     if results_2:
-        ax.bar([p + width/2 for p in positions], counts2.values, width=width, color="red", label="Set 2")
+        ax.bar([p + width/2 for p in positions], counts2.values, width=width, color="red", label=label2)
     ax.set_xticks(positions)
     ax.set_xlabel("Rank Position (1 = hottest)")
     ax.set_ylabel("Number of Tests")
