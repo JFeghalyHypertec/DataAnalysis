@@ -88,7 +88,7 @@ def run_core_heatmap_comparaison():
     key="occt1_cmp").strip() or "NA"
     plate2 = st.text_input(f"Plate for {file2_name}:", key="plate2_cmp").strip() or "NA"
     occt2 = st.selectbox(f"OCCT Version for {file2_name}:", options=["12.0.10", "14.0.9"],
-    key="occt1_cmp").strip() or "NA"
+    key="occt2_cmp").strip() or "NA"
     
     st.subheader("📋 Comparison Summary")
 
