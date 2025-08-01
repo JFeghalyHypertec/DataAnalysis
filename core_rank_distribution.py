@@ -97,6 +97,3 @@ def run_core_rank_distribution():
             file_name=f"{core_name}_distribution.png",
             mime="image/png"
         )
-
-if __name__ == "__main__":
-    run_core_rank_distribution()

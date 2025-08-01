@@ -8,7 +8,7 @@ from core_correlation_matrix import run_core_correlation_matrix
 from core_clustering import run_core_clustering
 from core_positions import run_core_physical_layout
 from core_averages import run_display_core_avg_table
-from DataAnalysis.core_rank_distribution import run_core_rank_distribution
+from core_rank_distribution import run_core_rank_distribution
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
