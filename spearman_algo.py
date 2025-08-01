@@ -72,10 +72,10 @@ def run_spearman_rank_similarity():
             df_ranks = df_avgs.rank(axis=1, method="average", ascending=False)
 
             # spearman corr between tests
-            corr = df_ranks.T.corr(method="spearman")
+            corr = df_ranks.corr(method="spearman")
 
             # plot heatmap
-            fig2, ax2 = plt.subplots(figsize=(6, 5))
+            fig2, ax2 = plt.subplots(figsize=(8, 8))
             sns.heatmap(
                 corr,
                 annot=True,
@@ -84,8 +84,8 @@ def run_spearman_rank_similarity():
                 cbar_kws={"label": "ρ"},
                 ax=ax2
             )
-            ax2.set_title("Spearman ρ between Tests", pad=12)
-            ax2.set_xticklabels(corr.columns, rotation=45, ha="right")
+            ax2.set_title("Spearman ρ between cores across Tests", pad=12)
+            ax2.set_xticklabels(corr.columns, rotation=90)
             ax2.set_yticklabels(corr.index, rotation=0)
             plt.tight_layout()
             st.pyplot(fig2)
