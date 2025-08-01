@@ -85,7 +85,7 @@ def run_spearman_rank_similarity():
                 ax=ax2
             )
             ax2.set_title("Spearman ρ between cores across Tests", pad=12)
-            ax2.set_xticklabels(corr.columns, rotation=90, ha='center')
-            ax2.set_yticklabels(corr.index, rotation=0)
+            ax2.set_xticklabels(corr.columns, rotation=90, fontsize=6)
+            ax2.set_yticklabels(corr.index, rotation=0, fontsize=6)
             plt.tight_layout()
             st.pyplot(fig2)
