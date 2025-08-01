@@ -65,7 +65,7 @@ def run_core_rank_distribution():
         min_value=0, max_value=max_core, value=0, step=1
     )
     core_name = f"Core {core_num}"
-    st.write(f"Distribution for **{core_name}**: Set1 = {len(results_1)} tests" + (f", Set2 = {len(results_2)} tests" if results_2 else ""))
+    st.write(f"Distribution for **{core_name}**: {label1} = {len(results_1)} tests" + (f", {label2} = {len(results_2)} tests" if results_2 else ""))
 
     # 5) frequency counts for each rank position
     ranks1 = df_ranks_1[core_name].round().astype(int)
