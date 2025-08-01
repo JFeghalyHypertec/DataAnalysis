@@ -17,7 +17,7 @@ def run_core_rank_distribution():
         accept_multiple_files=True,
         key="set1"
     )
-    label1 = st.text_input("Label for Set 1:", "Set 1")
+    label1 = st.text_input("Label for Set 1:", key="label1").strip() or "Set 1"
     
     uploaded_files_2 = st.file_uploader(
         "Upload one or more CPU test files (Set 2)",
@@ -25,7 +25,7 @@ def run_core_rank_distribution():
         accept_multiple_files=True,
         key="set2"
     )
-    label2 = st.text_input("Label for Set 2:", "Set 2")
+    label2 = st.text_input("Label for Set 2:", key="label2").strip() or "Set 2"
     if not uploaded_files_1:
         st.info("Please upload at least one file for Set 1 to get started.")
         st.stop()
