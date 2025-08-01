@@ -75,7 +75,7 @@ def run_spearman_rank_similarity():
             corr = df_ranks.corr(method="spearman")
 
             # plot heatmap
-            fig2, ax2 = plt.subplots(figsize=(8, 8))
+            fig2, ax2 = plt.subplots(figsize=(12, 12))
             sns.heatmap(
                 corr,
                 annot=True,
