@@ -8,7 +8,7 @@ from core_correlation_matrix import run_core_correlation_matrix
 from core_clustering import run_core_clustering
 from core_positions import run_core_physical_layout
 from core_averages import run_display_core_avg_table
-
+from spearman_algo import run_spearman_rank_similarity
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
 st.write("Select a tool below to begin:")
@@ -20,6 +20,7 @@ if "active_tool" not in st.session_state:
 col1, col2, col3 = st.columns(3)
 col4, col5, col6 = st.columns(3)
 col7, col8, col9 = st.columns(3)
+col10 = st.column(1)
 
 with col1:
     if st.button("📊 Excel CPU Calculations"):
@@ -57,6 +58,10 @@ with col9:
     if st.button("🌡️ Average Temperature Table"):
         st.session_state.active_tool = "Average Table"
         
+with col10:
+    if st.button(" Spearman Rank Similarity"):
+        st.session_state.active_tool = "Spearman Rank Similarity"
+
 st.divider()
 
 # Upload and execute based on selection
@@ -95,3 +100,7 @@ elif st.session_state.active_tool == "Physical Layout":
 elif st.session_state.active_tool == "Average Table":
     st.subheader("🌡️ Average Temperature Table")
     run_display_core_avg_table()
+    
+elif st.session_state.active_tool == "Spearman Rank Similarity":
+    st.subheader("Spearman Rank Similarity")
+    run_spearman_rank_similarity()
