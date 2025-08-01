@@ -1,91 +1,89 @@
-# streamlit_rank_similarity.py
-
+# streamlit_core_rank_distribution.py
+from io import BytesIO
 import pandas as pd
-import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
-from scipy.stats import spearmanr
-from io import BytesIO
-# import your existing extract_core_data function
-from coreHeatmapPlot import extract_core_data  
 
+from coreHeatmapPlot import extract_core_data  # your existing extractor
 def run_spearman_rank_similarity():
-    st.set_page_config(page_title="Spearman Rank Similarity", layout="wide")
-    st.title("🔥 Core-Ranking Similarity Across Tests")
+    st.set_page_config(page_title="Core Rank Distribution", layout="wide")
+    st.title("📊 Core-by-Core Rank Distribution")
 
+    # 1) file upload
     uploaded_files = st.file_uploader(
         "Upload one or more CPU test files (CSV or XLSX)",
         type=["csv", "xls", "xlsx"],
         accept_multiple_files=True
     )
 
-    if uploaded_files:
-        results = []  # will hold (filename, Series of averages)
+    if not uploaded_files:
+        st.info("Please upload at least one test file to get started.")
+        st.stop()
 
-        # 1) Process each file: extract core DataFrame & compute averages
-        for up in uploaded_files:
-            try:
-                # read raw table (no header) so extract_core_data can find CORE_LIST in row 1
-                if up.name.lower().endswith((".xls", ".xlsx")):
-                    df = pd.read_excel(up, header=None)
-                else:
-                    df = pd.read_csv(up, header=None)
+    # 2) process each file: extract averages
+    results = []
+    for up in uploaded_files:
+        try:
+            if up.name.lower().endswith((".xls", ".xlsx")):
+                df = pd.read_excel(up, header=None)
+            else:
+                df = pd.read_csv(up, header=None)
 
-                core_df = extract_core_data(df)
-                averages = core_df[core_df != 0].mean()
-                results.append((up.name, averages))
+            core_df = extract_core_data(df)
+            averages = core_df[core_df != 0].mean()
+            results.append((up.name, averages))
+        except Exception as e:
+            st.error(f"❌ Error processing **{up.name}**: {e}")
 
-                # 2) Draw the bar chart for this file
-                fig, ax = plt.subplots(figsize=(4, 6))
-                avg_rev = averages[::-1]  # so Core 0 is at top
-                bars = ax.barh(avg_rev.index, avg_rev.values, color="gray")
-                ax.set_title(f"Avg Temp per Core\n{up.name}", pad=10)
-                ax.set_xlabel("°C")
-                ax.set_xlim(avg_rev.min() - 5, avg_rev.max() + 5)
+    if len(results) == 0:
+        st.error("No valid cores data could be extracted.")
+        st.stop()
 
-                # annotate
-                for bar, val in zip(bars, avg_rev.values):
-                    ax.text(val + 0.5,
-                            bar.get_y() + bar.get_height() / 2,
-                            f"{val:.1f}°C",
-                            va="center",
-                            ha="left",
-                            fontsize=9)
+    # 3) build avg DataFrame & compute ranks
+    df_avgs = pd.DataFrame({fn: avgs for fn, avgs in results}).T
+    df_ranks = df_avgs.rank(axis=1, method="average", ascending=False)
 
-                st.pyplot(fig)
+    # 4) let user pick a core number
+    #    determine how many cores we actually have (should be 26)
+    core_names = sorted(df_ranks.columns, key=lambda c: int(c.split()[1]))
+    max_core = len(core_names) - 1
 
-            except Exception as e:
-                st.error(f"Error processing **{up.name}**: {e}")
+    core_num = st.number_input(
+        "Enter core number to display (0–{0})".format(max_core),
+        min_value=0,
+        max_value=max_core,
+        value=0,
+        step=1
+    )
+    core_name = f"Core {int(core_num)}"
 
-        # 3) If more than one test, compute & show Spearman correlation heatmap
-        if len(results) > 1:
-            st.subheader("🔗 Spearman Rank Correlation Matrix")
+    st.write(f"Showing rank distribution for **{core_name}** across {len(results)} tests.")
 
-            # build DataFrame: rows = tests, cols = cores
-            df_avgs = pd.DataFrame({
-                fname: avgs
-                for fname, avgs in results
-            }).T
+    # 5) compute how often this core was each rank
+    #    round in case of ties
+    ranks = df_ranks[core_name].round().astype(int)
+    rank_counts = (
+        ranks
+        .value_counts()
+        .reindex(range(1, len(core_names) + 1), fill_value=0)
+    )
 
-            # rank each row (hottest → rank 1)
-            df_ranks = df_avgs.rank(axis=1, method="average", ascending=False)
+    # 6) plot bar chart
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(rank_counts.index, rank_counts.values)
+    ax.set_xticks(rank_counts.index)
+    ax.set_xlabel("Rank Position (1 = hottest)")
+    ax.set_ylabel("Number of Tests")
+    ax.set_title(f"{core_name} Rank Occurrence Histogram")
+    plt.tight_layout()
 
-            # spearman corr between cores
-            corr = df_ranks.corr(method="spearman")
-
-            # plot heatmap
-            fig2, ax2 = plt.subplots(figsize=(12, 12))
-            sns.heatmap(
-                corr,
-                annot=True,
-                fmt=".2f",
-                cmap="coolwarm",
-                cbar_kws={"label": "ρ"},
-                ax=ax2
-            )
-            ax2.set_title("Spearman ρ between cores across Tests", pad=12)
-            ax2.set_xticklabels(corr.columns, rotation=90, fontsize=6)
-            ax2.set_yticklabels(corr.index, rotation=0, fontsize=6)
-            plt.tight_layout()
-            st.pyplot(fig2)
+    st.pyplot(fig)
+    if st.button("Download Rank Distribution Chart"):
+        buf = BytesIO()
+        fig.savefig(buf, format="png", bbox_inches='tight', pad_inches=0.1)
+        st.download_button(
+            label="Download Chart",
+            data=buf.getvalue(),
+            file_name=f"{core_name}_rank_distribution.png",
+            mime="image/png"
+        )
