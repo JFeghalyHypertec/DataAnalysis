@@ -169,7 +169,7 @@ def run_core_heatmap_comparaison():
     
     ax_table = fig.add_subplot(spec[1,:])
     ax_table.axis("off")
-    col_width = [0.25, 0.4, 0.15, 0.15, 0.15]
+    col_width = [0.25, 0.3, 0.15, 0.15, 0.15]
     table = ax_table.table(cellText=summary_df.values, 
                            colLabels=summary_df.columns, 
                            colWidths=col_width,
