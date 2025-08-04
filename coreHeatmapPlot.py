@@ -64,8 +64,8 @@ def plot_heatmap(core_df, file_path, summary_table=None):
                           colLabels=col_labels, cellLoc='center', 
                           loc='center')
         table.auto_set_font_size(False)
-        table.set_fontsize(14)
-        table.scale(1.5, 1.5)
+        table.set_fontsize(12)
+        table.scale(1, 1.1)
 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.35, wspace=0.3)
