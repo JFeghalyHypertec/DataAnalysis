@@ -134,7 +134,7 @@ def run_core_heatmap_comparaison():
     wf2_avg = wf2.mean() if not wf2.empty else np.nan
     wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
     
-    cols = ["File", "Plate", "OCCT Version", f"{CPU_PACKAGE} Temperature", "Overall Avg Core Temp", WATER_FLOW]
+    cols = ["File", "Plate", "OCCT Version", "CPU_PACKAGE Temperature", "Overall Avg Core Temp", WATER_FLOW]
     file1_name = file1_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
     file2_name = file2_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
     data = [
