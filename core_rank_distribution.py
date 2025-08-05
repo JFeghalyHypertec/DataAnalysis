@@ -1,4 +1,4 @@
-# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison + Detailed Distribution)
+# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison + Detailed Distribution with Controls)
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -114,31 +114,39 @@ def run_core_rank_distribution():
         plt.tight_layout()
         st.pyplot(fig)
 
-    # detailed core distribution across all sets
+    # detailed core distribution across selected sets
     st.subheader("🔎 Detailed Core Distribution")
     core_num = st.number_input(
         f"Select core number to view (0–{max_core}):", min_value=0, max_value=max_core, value=0, step=1
     )
     core_name = f"Core {core_num}"
-    st.write(f"Rank distribution for **{core_name}** across all sets")
+    st.write(f"Rank distribution for **{core_name}** across selected sets")
+
+    # choose which sets to display
+    available = [item["label"] for item in processed if item["results"]]
+    display = st.multiselect("Select sets to display:", options=available, default=available)
 
     # prepare plot
     positions = list(range(1, len(core_names) + 1))
-    n = len([item for item in processed if item["results"]])
+    n = len(display)
     width = 0.8 / n if n > 0 else 0.8
     fig, ax = plt.subplots(figsize=(10, 5))
 
     for idx, item in enumerate(processed):
         label = item["label"]
-        results = item["results"]
-        if not results:
+        if label not in display or not item["results"]:
             continue
-        df_avgs = pd.DataFrame({fn: avgs for fn, avgs in results}).T
+        df_avgs = pd.DataFrame({fn: avgs for fn, avgs in item["results"]}).T
         df_ranks = df_avgs.rank(axis=1, method="average", ascending=False)
         ranks = df_ranks[core_name].round().astype(int)
         counts = ranks.value_counts().reindex(positions, fill_value=0)
         offsets = [p - 0.4 + idx * width for p in positions]
-        ax.bar(offsets, counts.values, width=width, label=label)
+        bars = ax.bar(offsets, counts.values, width=width, label=label)
+        # add value labels
+        for bar in bars:
+            h = bar.get_height()
+            if h > 0:
+                ax.text(bar.get_x() + bar.get_width()/2, h + 0.5, f"{int(h)}", ha='center', va='bottom', fontsize=8)
 
     ax.set_xticks(positions)
     ax.set_xticklabels(positions)
@@ -151,3 +159,5 @@ def run_core_rank_distribution():
 
     # optional download buttons omitted for brevity
 
+if __name__ == "__main__":
+    run_core_rank_distribution()
