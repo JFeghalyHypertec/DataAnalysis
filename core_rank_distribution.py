@@ -1,4 +1,4 @@
-# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison)
+# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison + Detailed Distribution)
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -53,11 +53,12 @@ def run_core_rank_distribution():
         st.error("No valid data extracted for Set 1.")
         st.stop()
 
-    # get core names from first result of set 1
+    # derive core names and max index
     core_names = sorted(
         processed[0]["results"][0][1].index,
         key=lambda c: int(c.split()[1])
     )
+    max_core = len(core_names) - 1
 
     combined_std = {}
 
@@ -113,4 +114,40 @@ def run_core_rank_distribution():
         plt.tight_layout()
         st.pyplot(fig)
 
-    # (Optional) detailed distribution code can follow here
+    # detailed core distribution across all sets
+    st.subheader("🔎 Detailed Core Distribution")
+    core_num = st.number_input(
+        f"Select core number to view (0–{max_core}):", min_value=0, max_value=max_core, value=0, step=1
+    )
+    core_name = f"Core {core_num}"
+    st.write(f"Rank distribution for **{core_name}** across all sets")
+
+    # prepare plot
+    positions = list(range(1, len(core_names) + 1))
+    n = len([item for item in processed if item["results"]])
+    width = 0.8 / n if n > 0 else 0.8
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    for idx, item in enumerate(processed):
+        label = item["label"]
+        results = item["results"]
+        if not results:
+            continue
+        df_avgs = pd.DataFrame({fn: avgs for fn, avgs in results}).T
+        df_ranks = df_avgs.rank(axis=1, method="average", ascending=False)
+        ranks = df_ranks[core_name].round().astype(int)
+        counts = ranks.value_counts().reindex(positions, fill_value=0)
+        offsets = [p - 0.4 + idx * width for p in positions]
+        ax.bar(offsets, counts.values, width=width, label=label)
+
+    ax.set_xticks(positions)
+    ax.set_xticklabels(positions)
+    ax.set_xlabel("Rank Position (1 = hottest)")
+    ax.set_ylabel("Number of Tests")
+    ax.set_title(f"{core_name} Rank Distribution")
+    ax.legend()
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # optional download buttons omitted for brevity
+
