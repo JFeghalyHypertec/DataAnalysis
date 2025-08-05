@@ -82,6 +82,8 @@ def run_core_rank_distribution():
     summary_1['Rank Std Dev'].plot(kind='bar', ax=ax_stab1)
     ax_stab1.set_ylabel('Rank Std Dev')
     ax_stab1.set_title(f'Core Rank Stability – {label1}')
+    for i, v in enumerate(summary_1['Rank Std Dev']):
+        ax_stab1.text(i, v + 0.02, f"{v:.2f}", ha='center', va='bottom', fontsize=8)
     plt.tight_layout()
     st.pyplot(fig_stab1)
 
@@ -106,6 +108,8 @@ def run_core_rank_distribution():
         summary_2['Rank Std Dev'].plot(kind='bar', ax=ax_stab2)
         ax_stab2.set_ylabel('Rank Std Dev')
         ax_stab2.set_title(f'Core Rank Stability – {label2}')
+        for i, v in enumerate(summary_2['Rank Std Dev']):
+            ax_stab2.text(i, v + 0.02, f"{v:.2f}", ha='center', va='bottom', fontsize=8)
         plt.tight_layout()
         st.pyplot(fig_stab2)
 
@@ -133,16 +137,21 @@ def run_core_rank_distribution():
     fig, ax = plt.subplots(figsize=(8, 4))
     positions = list(range(1, len(core_names)+1))
     width = 0.4
-    ax.bar([p - width/2 for p in positions], counts1.values, width=width,
-           label=label1)
+    bars1 = ax.bar([p - width/2 for p in positions], counts1.values, width=width, label=label1)
     if results_2:
-        ax.bar([p + width/2 for p in positions], counts2.values, width=width,
-               label=label2)
+        bars2 = ax.bar([p + width/2 for p in positions], counts2.values, width=width, label=label2)
     ax.set_xticks(positions)
     ax.set_xlabel("Rank Position (1 = hottest)")
     ax.set_ylabel("Number of Tests")
     ax.set_title(f"{core_name} Rank Occurrence Histogram")
     ax.legend()
+    for bar in bars1:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{int(height)}', ha='center', va='bottom', fontsize=8)
+    if results_2:
+        for bar in bars2:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{int(height)}', ha='center', va='bottom', fontsize=8)
     plt.tight_layout()
     st.pyplot(fig)
 
