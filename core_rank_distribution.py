@@ -156,8 +156,3 @@ def run_core_rank_distribution():
     ax.legend()
     plt.tight_layout()
     st.pyplot(fig)
-
-    # optional download buttons omitted for brevity
-
-if __name__ == "__main__":
-    run_core_rank_distribution()
