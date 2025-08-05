@@ -118,7 +118,7 @@ def run_core_rank_distribution():
     ax.set_ylabel("Test Count")
     ax.set_title(f"{core_name} Rank Histogram")
     ax.legend()
-    for bar in bars1 + (bars2 if results_2 else []):
+    for bar in list(bars1) + (list(bars2) if results_2 else []):
         h = bar.get_height()
         if h > 0:
             ax.text(bar.get_x()+bar.get_width()/2, h+0.5, f"{int(h)}", ha='center', va='bottom', fontsize=8)
