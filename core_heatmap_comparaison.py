@@ -14,8 +14,7 @@ CPU_PACKAGE = "CPU Package"
 WATER_FLOW = "Water Flow"
 
 def extract_core_data(df):
-    time_col = 0
-    time = pd.to_numeric(df.iloc[START_ROW:, time_col], errors='coerce')
+    time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
 
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
@@ -23,17 +22,28 @@ def extract_core_data(df):
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     core_data = core_data.replace(0, np.nan)
 
+    # TR1 grouping (if present)
     tr1_col = next((i for i in range(df.shape[1]) if df.iloc[1, i] == TR1), None)
     if tr1_col is not None:
         tr1_data = pd.to_numeric(df.iloc[START_ROW:, tr1_col], errors='coerce')
         tr1_data.index = time
         tr1_data = tr1_data.replace(0, np.nan)
         tr1_grouped = tr1_data.groupby((tr1_data.index // 60) * 60).mean()
+        # drop last minute of TR1
+        if not tr1_grouped.empty:
+            last_tr1 = tr1_grouped.index.max()
+            tr1_grouped = tr1_grouped[tr1_grouped.index < last_tr1]
     else:
         tr1_grouped = None
 
+    # core data → 1-min buckets
     core_data['time_bucket'] = (core_data.index // 60) * 60
     grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
+    # drop last minute of core data
+    if not grouped_core.empty:
+        last_bucket = grouped_core.index.max()
+        grouped_core = grouped_core[grouped_core.index < last_bucket]
+
     return grouped_core, tr1_grouped
 
 def get_col(df, name):
