@@ -147,11 +147,13 @@ def run_core_rank_distribution():
     ax.legend()
     for bar in bars1:
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.01, f'{int(height)}', ha='center', va='bottom', fontsize=8)
+        if height > 0:
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.01, f'{int(height)}', ha='center', va='bottom', fontsize=8)
     if results_2:
         for bar in bars2:
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 0.01, f'{int(height)}', ha='center', va='bottom', fontsize=8)
+            if height > 0:
+                ax.text(bar.get_x() + bar.get_width()/2., height + 0.01, f'{int(height)}', ha='center', va='bottom', fontsize=8)
     plt.tight_layout()
     st.pyplot(fig)
 
