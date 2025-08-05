@@ -146,7 +146,7 @@ def run_core_rank_distribution():
         for bar in bars:
             h = bar.get_height()
             if h > 0:
-                ax.text(bar.get_x() + bar.get_width()/2, h + 0.01, f"{int(h)}", ha='center', va='bottom', fontsize=8)
+                ax.text(bar.get_x() + bar.get_width()/2, h, f"{int(h)}", ha='center', va='bottom', fontsize=8)
 
     ax.set_xticks(positions)
     ax.set_xticklabels(positions)
