@@ -1,4 +1,4 @@
-# streamlit_core_rank_distribution.py
+# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics)
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,8 +35,10 @@ def run_core_rank_distribution():
         results = []
         for up in uploaded:
             try:
+                # read CSV or Excel
                 df = pd.read_excel(up, header=None) if up.name.lower().endswith((".xls", ".xlsx")) else pd.read_csv(up, header=None)
                 core_df = extract_core_data(df)
+                # compute per-core average temperature
                 averages = core_df[core_df != 0].mean()
                 results.append((up.name, averages))
             except Exception as e:
@@ -50,14 +52,64 @@ def run_core_rank_distribution():
         st.error("No valid data extracted for Set 1.")
         st.stop()
 
-    # 3) build DataFrames and rank
+    # 3) build DataFrames and rank them (1 = hottest)
     df_avgs_1 = pd.DataFrame({fn: avgs for fn, avgs in results_1}).T
     df_ranks_1 = df_avgs_1.rank(axis=1, method="average", ascending=False)
     if results_2:
         df_avgs_2 = pd.DataFrame({fn: avgs for fn, avgs in results_2}).T
         df_ranks_2 = df_avgs_2.rank(axis=1, method="average", ascending=False)
 
-    # 4) choose core number
+    # 3.1) compute stability metrics: mean rank & std dev per core
+    rank_mean_1 = df_ranks_1.mean(axis=0)
+    rank_std_1  = df_ranks_1.std(axis=0)
+
+    # display stability summary for Set 1
+    st.subheader(f"🔍 Stability Summary – {label1}")
+    summary_1 = pd.DataFrame({
+        "Mean Rank": rank_mean_1,
+        "Rank Std Dev": rank_std_1
+    }).round(2)
+    st.dataframe(summary_1)
+
+    # highlight most stable and most variable cores
+    most_stable_1   = rank_std_1.idxmin()
+    most_variable_1 = rank_std_1.idxmax()
+    st.write(f"🔥 **{most_stable_1}** is the most stable core in {label1} (std = {rank_std_1.min():.2f}).")
+    st.write(f"⚡ **{most_variable_1}** is the most variable core in {label1} (std = {rank_std_1.max():.2f}).")
+
+    # bar chart of rank std dev for Set 1
+    fig_stab1, ax_stab1 = plt.subplots(figsize=(10, 4))
+    summary_1['Rank Std Dev'].plot(kind='bar', ax=ax_stab1)
+    ax_stab1.set_ylabel('Rank Std Dev')
+    ax_stab1.set_title(f'Core Rank Stability – {label1}')
+    plt.tight_layout()
+    st.pyplot(fig_stab1)
+
+    # repeat stability for Set 2 if present
+    if results_2:
+        rank_mean_2 = df_ranks_2.mean(axis=0)
+        rank_std_2  = df_ranks_2.std(axis=0)
+
+        st.subheader(f"🔍 Stability Summary – {label2}")
+        summary_2 = pd.DataFrame({
+            "Mean Rank": rank_mean_2,
+            "Rank Std Dev": rank_std_2
+        }).round(2)
+        st.dataframe(summary_2)
+
+        most_stable_2   = rank_std_2.idxmin()
+        most_variable_2 = rank_std_2.idxmax()
+        st.write(f"🔥 **{most_stable_2}** is the most stable core in {label2} (std = {rank_std_2.min():.2f}).")
+        st.write(f"⚡ **{most_variable_2}** is the most variable core in {label2} (std = {rank_std_2.max():.2f}).")
+
+        fig_stab2, ax_stab2 = plt.subplots(figsize=(10, 4))
+        summary_2['Rank Std Dev'].plot(kind='bar', ax=ax_stab2)
+        ax_stab2.set_ylabel('Rank Std Dev')
+        ax_stab2.set_title(f'Core Rank Stability – {label2}')
+        plt.tight_layout()
+        st.pyplot(fig_stab2)
+
+    # 4) choose core number for detailed rank distribution
     core_names = sorted(df_ranks_1.columns, key=lambda c: int(c.split()[1]))
     max_core = len(core_names) - 1
     core_num = st.number_input(
@@ -65,7 +117,10 @@ def run_core_rank_distribution():
         min_value=0, max_value=max_core, value=0, step=1
     )
     core_name = f"Core {core_num}"
-    st.write(f"Distribution for **{core_name}**: {label1} = {len(results_1)} tests" + (f", {label2} = {len(results_2)} tests" if results_2 else ""))
+    st.write(
+        f"Distribution for **{core_name}**: {label1} = {len(results_1)} tests" +
+        (f", {label2} = {len(results_2)} tests" if results_2 else "")
+    )
 
     # 5) frequency counts for each rank position
     ranks1 = df_ranks_1[core_name].round().astype(int)
@@ -74,13 +129,15 @@ def run_core_rank_distribution():
         ranks2 = df_ranks_2[core_name].round().astype(int)
         counts2 = ranks2.value_counts().reindex(range(1, len(core_names)+1), fill_value=0)
 
-    # 6) plot grouped bar chart
+    # 6) plot grouped bar chart of distribution
     fig, ax = plt.subplots(figsize=(8, 4))
     positions = list(range(1, len(core_names)+1))
     width = 0.4
-    ax.bar([p - width/2 for p in positions], counts1.values, width=width, label=label1, color="blue")
+    ax.bar([p - width/2 for p in positions], counts1.values, width=width,
+           label=label1)
     if results_2:
-        ax.bar([p + width/2 for p in positions], counts2.values, width=width, color="red", label=label2)
+        ax.bar([p + width/2 for p in positions], counts2.values, width=width,
+               label=label2)
     ax.set_xticks(positions)
     ax.set_xlabel("Rank Position (1 = hottest)")
     ax.set_ylabel("Number of Tests")
@@ -89,8 +146,8 @@ def run_core_rank_distribution():
     plt.tight_layout()
     st.pyplot(fig)
 
-    # 7) download option
-    if st.button("Download Chart"):
+    # 7) download option for distribution chart
+    if st.button("Download Distribution Chart"):
         buf = BytesIO()
         fig.savefig(buf, format="png", bbox_inches='tight')
         st.download_button(
