@@ -104,7 +104,8 @@ def run_core_rank_distribution():
         x = list(range(len(core_names)))
         for label in combined_df.columns:
             y = combined_df[label].values
-            color = "#%06x" % random.randint(0, 0xFFFFFF)
+            while color in ax.get_lines():
+                color = "#%06x" % random.randint(0, 0xFFFFFF)
             ax.plot(x, y, marker="o", label=label, color=color)
         ax.set_xticks(x)
         ax.set_xticklabels(core_names, rotation=90)
