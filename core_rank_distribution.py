@@ -95,6 +95,7 @@ def run_core_rank_distribution():
         st.pyplot(fig)
 
         combined_std[label] = rank_std
+        
     used_colors = set()
     # combined comparison plot
     if combined_std:
