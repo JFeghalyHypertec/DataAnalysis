@@ -95,7 +95,7 @@ def run_core_rank_distribution():
         st.pyplot(fig)
 
         combined_std[label] = rank_std
-
+    used_colors = set()
     # combined comparison plot
     if combined_std:
         st.subheader("📊 Combined Core Rank Stability Comparison")
@@ -104,8 +104,9 @@ def run_core_rank_distribution():
         x = list(range(len(core_names)))
         for label in combined_df.columns:
             y = combined_df[label].values
-            while color in ax.get_lines():
+            while color in used_colors:
                 color = "#%06x" % random.randint(0, 0xFFFFFF)
+            used_colors.add(color)
             ax.plot(x, y, marker="o", label=label, color=color)
         ax.set_xticks(x)
         ax.set_xticklabels(core_names, rotation=90)
