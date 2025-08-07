@@ -176,7 +176,7 @@ def run_core_rank_distribution():
     else:
         st.write("Not enough data across multiple sets to generate an executive summary.")
 
-    # AI-Generated Summary
+    # AI-Generated Insights
     st.subheader("🤖 AI-Generated Insights")
     if combined_std:
         try:
@@ -184,7 +184,7 @@ def run_core_rank_distribution():
                 f"Summarize the key findings from the core stability analysis across {len(combined_std)} sets. "
                 f"Highlight the most stable and most variable cores, overall trends, and any recommendations for optimizing cooling performance."
             )
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=200,
