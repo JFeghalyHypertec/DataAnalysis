@@ -1,4 +1,4 @@
-# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison + Detailed Distribution with Controls)
+# streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison + Detailed Distribution with Controls + Executive Summary)
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -96,18 +96,22 @@ def run_core_rank_distribution():
 
         combined_std[label] = rank_std
         
-    used_colors = set()
     # combined comparison plot
     if combined_std:
         st.subheader("📊 Combined Core Rank Stability Comparison")
         combined_df = pd.DataFrame(combined_std).loc[core_names]
         fig, ax = plt.subplots(figsize=(12, 6))
         x = list(range(len(core_names)))
+        used_colors = set()
         for label in combined_df.columns:
             y = combined_df[label].values
-            while color in used_colors:
-                color = "#%06x" % random.randint(0, 0xFFFFFF)
-            used_colors.add(color)
+            color = None
+            while True:
+                color_candidate = "#%06x" % random.randint(0, 0xFFFFFF)
+                if color_candidate not in used_colors:
+                    color = color_candidate
+                    used_colors.add(color)
+                    break
             ax.plot(x, y, marker="o", label=label, color=color)
         ax.set_xticks(x)
         ax.set_xticklabels(core_names, rotation=90)
@@ -159,3 +163,17 @@ def run_core_rank_distribution():
     ax.legend()
     plt.tight_layout()
     st.pyplot(fig)
+
+    # Executive Summary
+    st.subheader("📈 Executive Summary")
+    if combined_std:
+        overall_mean_std = pd.DataFrame(combined_std).mean(axis=1)
+        overall_stable = overall_mean_std.idxmin()
+        overall_variable = overall_mean_std.idxmax()
+        st.write(f"Across all sets, **{overall_stable}** is the most stable core on average (mean std = {overall_mean_std.min():.2f}).")
+        st.write(f"Across all sets, **{overall_variable}** is the most variable core on average (mean std = {overall_mean_std.max():.2f}).")
+    else:
+        st.write("Not enough data across multiple sets to generate an executive summary.")
+
+if __name__ == "__main__":
+    run_core_rank_distribution()
