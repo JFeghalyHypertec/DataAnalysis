@@ -1,5 +1,6 @@
 # streamlit_core_rank_distribution.py (Enhanced with Stability Metrics + Multi-Set Comparison + AI-Generated Summary)
 from io import BytesIO
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -11,6 +12,13 @@ from coreHeatmapPlot import extract_core_data  # your existing extractor
 def run_core_rank_distribution():
     st.set_page_config(page_title="Core Rank Distribution", layout="wide")
     st.title("📊 Core-by-Core Rank Distribution")
+
+    # Set OpenAI API key (from environment or Streamlit secrets)
+    api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+    if api_key:
+        openai.api_key = api_key
+    else:
+        st.error("OpenAI API key not found. Set OPENAI_API_KEY environment variable or add to Streamlit secrets.")
 
     # 1) ask how many sets the user wants
     n_sets = st.number_input("Number of test sets:", min_value=1, value=2, step=1)
