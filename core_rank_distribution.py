@@ -6,11 +6,22 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import random
 import openai
+import hashlib
+import matplotlib as mpl
 
-from coreHeatmapPlot import extract_core_data  # your existing extractor
+from coreHeatmapPlot import extract_core_data  #
+
+def color_for(label: str, palette: str = "tab20"):
+    """Return a stable color for any label using a hashed index into a palette."""
+    cmap = mpl.cm.get_cmap(palette)
+    h = int(hashlib.sha1(str(label).encode("utf-8")).hexdigest(), 16)
+    # Listed palettes (tab10/tab20) expose .colors
+    if hasattr(cmap, "colors"):
+        return cmap.colors[h % len(cmap.colors)]
+    # Fallback for continuous colormaps
+    return cmap((h % 256) / 255.0)
 
 def run_core_rank_distribution():
-    st.set_page_config(page_title="Core Rank Distribution", layout="wide")
     st.title("📊 Core-by-Core Rank Distribution")
 
     # Set OpenAI API key (from environment or Streamlit secrets)
@@ -39,17 +50,18 @@ def run_core_rank_distribution():
         st.info("Please upload at least one file for Set 1.")
         st.stop()
 
+    @st.cache_data(show_spinner=False)
     def process_files(uploaded_files):
-        results = []
+        out = []
         for up in uploaded_files:
-            try:
-                df = pd.read_excel(up, header=None) if up.name.lower().endswith((".xls", ".xlsx")) else pd.read_csv(up, header=None)
-                core_df = extract_core_data(df)
-                avgs = core_df.replace(0, pd.NA).mean()
-                results.append((up.name, avgs))
-            except Exception as e:
-                st.error(f"Error processing {up.name}: {e}")
-        return results
+            df = (pd.read_excel(up, header=None)
+                if up.name.lower().endswith((".xls", ".xlsx"))
+                else pd.read_csv(up, header=None, low_memory=False))
+            core_df = extract_core_data(df)          # your extractor
+            avgs = core_df.replace(0, pd.NA).mean()
+            out.append((up.name, avgs))
+        return out
+
 
     # process each set
     processed = []
@@ -102,7 +114,7 @@ def run_core_rank_distribution():
             ax.text(i, v + 0.02, f"{v:.2f}", ha="center", va="bottom", fontsize=8)
         plt.tight_layout()
         st.pyplot(fig)
-
+        plt.close(fig)
         combined_std[label] = rank_std
 
     # combined comparison plot
@@ -114,14 +126,7 @@ def run_core_rank_distribution():
         used_colors = set()
         for label in combined_df.columns:
             y = combined_df[label].values
-            color = None
-            while True:
-                color_candidate = "#%06x" % random.randint(0, 0xFFFFFF)
-                if color_candidate not in used_colors:
-                    color = color_candidate
-                    used_colors.add(color)
-                    break
-            ax.plot(x, y, marker="o", label=label, color=color)
+            ax.plot(x, y, marker="o", label=label, color=color_for(label))
         ax.set_xticks(x)
         ax.set_xticklabels(core_names, rotation=90)
         ax.set_ylabel("Rank Std Dev")
@@ -129,6 +134,7 @@ def run_core_rank_distribution():
         ax.legend()
         plt.tight_layout()
         st.pyplot(fig)
+        plt.close(fig)
 
     # detailed core distribution across selected sets
     st.subheader("🔎 Detailed Core Distribution")
@@ -172,7 +178,8 @@ def run_core_rank_distribution():
     ax.legend()
     plt.tight_layout()
     st.pyplot(fig)
-
+    plt.close(fig)
+    
     # Executive Summary
     st.subheader("📈 Executive Summary")
     if combined_std:
