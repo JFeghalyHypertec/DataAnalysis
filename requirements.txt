@@ -9,3 +9,4 @@ networkx
 plotly
 spicy
 openai
+xslwriter
