@@ -155,7 +155,7 @@ def run_core_heatmap_plot():
                     mime="image/png"
                 )
                 excel_buf = BytesIO()
-                with pd.ExcelWriter(excel_buf, engine='xlsxwriter') as writer:
+                with pd.ExcelWriter(excel_buf, engine='openpyxl') as writer:
                     summary.to_excel(writer, index=False, sheet_name="Summary")
                     core_df.to_excel(writer, index=True, sheet_name="Core Data")
                 
