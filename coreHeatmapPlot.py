@@ -154,7 +154,19 @@ def run_core_heatmap_plot():
                     file_name=f"{file_name.replace('.', '_')}_heatmap.png",
                     mime="image/png"
                 )
+                excel_buf = BytesIO()
+                with pd.ExcelWriter(excel_buf, engine='xlsxwriter') as writer:
+                    summary.to_excel(writer, index=False, sheet_name="Summary")
+                    core_df.to_excel(writer, index=True, sheet_name="Core Data")
+                
+                st.download_button(
+                    label=f"📊 Download Summary for {file_name}",
+                    data=excel_buf.getvalue(),
+                    file_name=f"{file_name.replace('.', '_')}_summary.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
                 st.markdown("---")  # Divider between plots
+                
 
             except Exception as e:
                 st.error(f"❌ Error processing {file_name}: {str(e)}")
