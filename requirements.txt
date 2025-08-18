@@ -8,3 +8,4 @@ scikit-learn
 networkx
 plotly
 spicy
+openai

@@ -12,7 +12,7 @@ from core_rank_distribution import run_core_rank_distribution
 
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
-st.write("Select a tool below to begin:")
+st.write("Select a tool below to begin please:")
 
 # Simulated pop-up logic
 if "active_tool" not in st.session_state:
