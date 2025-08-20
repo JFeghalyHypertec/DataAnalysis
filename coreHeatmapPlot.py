@@ -138,7 +138,7 @@ def run_core_heatmap_plot():
                 user_plate = st.text_input(f"🧾 Enter plate name for {file_name}:", "", key=f"plate_{i}")
                 user_occt_version = st.selectbox(
                     f"🔧 Select OCCT Version for {file_name}:",
-                    options=["12.0.10", "14.0.9"],
+                    options=["12.0.10", "14.0.09"],
                     key=f"occt_{i}"
                 )
                 summary = build_summary_table(df, core_df, uploaded_file, user_plate, user_occt_version)
