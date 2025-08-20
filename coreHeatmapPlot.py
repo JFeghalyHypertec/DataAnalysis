@@ -7,53 +7,67 @@ import streamlit as st
 from io import BytesIO
 from pathlib import Path
 
-START_ROW = 3
-CORE_LIST = [f"Core {i}" for i in range(26)]
+# Constants
+START_ROW = 3  # Row index where the actual data starts
+CORE_LIST = [f"Core {i}" for i in range(26)]  # Expected CPU core column names
 CPU_PACKAGE = "CPU Package"
 WATER_FLOW = "Water Flow"
 
+# -----------------------------
+# Extract core temperature data
+# -----------------------------
 def extract_core_data(df):
+    # Identify which columns correspond to core temperatures
     core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
     if not core_cols:
         raise ValueError("No core temperature columns found.")
+    
+    # First column = Time, converted to numeric
     time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
+    
+    # Extract only the core temperature columns
     core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
-    core_data.index = time
-
+    core_data.index = time  # Use time as index
+    
+    # Rename columns using the second row (labels)
     core_data.columns = [df.iloc[1, i] for i in core_cols]
     return core_data
 
+# -----------------------------
+# Plot heatmap + bar chart + summary table
+# -----------------------------
 def plot_heatmap(core_df, file_path, summary_table=None):
+    # Calculate average per core (ignoring zeros)
     averages = core_df[core_df != 0].mean()
     overall_avg = averages.mean()
 
-    # Increased height for the embedded table
+    # Create figure with GridSpec layout (heatmap, bar chart, and table)
     fig = plt.figure(figsize=(16, 11))
     spec = gridspec.GridSpec(ncols=2, nrows=2, width_ratios=[4, 1], height_ratios=[4, 1.2])
 
-    # Heatmap
+    # ---- Heatmap ----
     ax0 = fig.add_subplot(spec[0, 0])
-    core_df.index = (core_df.index / 3600).round(2)  # Convert index to hours
+    core_df.index = (core_df.index / 3600).round(2)  # Convert seconds → hours
     sns.heatmap(core_df.T, cmap="coolwarm", cbar_kws={'label': 'Temperature (°C)'}, ax=ax0)
     file_name = file_path.name
     ax0.set_title(f"Core Temperatures Over Time (Heatmap)\n {file_name}")
     ax0.set_xlabel("Time (hours)")
     ax0.set_ylabel("CPU Cores")
 
-    # Bar Chart
+    # ---- Bar chart of averages ----
     ax1 = fig.add_subplot(spec[0, 1])
-    # Reverse the order so Core 0 is at the top
-    averages = averages[::-1]
+    averages = averages[::-1]  # Reverse order so Core 0 is on top
     bars = ax1.barh(averages.index, averages.values, color='gray')
     ax1.set_title("Avg Temp per Core")
     ax1.set_xlim(averages.min() - 5, averages.max() + 5)
     ax1.set_xlabel("°C")
 
+    # Annotate each bar with its value
     for bar, value in zip(bars, averages.values):
-        ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}°C",
-                 va='center', ha='left', fontsize=9)
+        ax1.text(value + 0.5, bar.get_y() + bar.get_height() / 2,
+                 f"{value:.1f}°C", va='center', ha='left', fontsize=9)
         
-    # Summary Table
+    # ---- Summary table ----
     ax2 = fig.add_subplot(spec[1, :])
     ax2.axis("off")
     if summary_table is not None:
@@ -61,8 +75,7 @@ def plot_heatmap(core_df, file_path, summary_table=None):
         col_labels = summary_table.columns
         col_width = [0.4, 0.1, 0.15, 0.15, 0.2]
         table = ax2.table(cellText=cell_text, colWidths=col_width,
-                          colLabels=col_labels, cellLoc='center', 
-                          loc='center')
+                          colLabels=col_labels, cellLoc='center', loc='center')
         table.auto_set_font_size(False)
         table.set_fontsize(12)
         table.scale(1, 1.1)
@@ -71,8 +84,12 @@ def plot_heatmap(core_df, file_path, summary_table=None):
     plt.subplots_adjust(hspace=0.35, wspace=0.3)
     return fig
 
+# -----------------------------
+# Helpers for fetching columns
+# -----------------------------
 def get_col(df, name):
     try:
+        # Return the column index matching a given name (in row 1)
         return next(i for i in range(df.shape[1]) if df.iloc[1, i] == name)
     except StopIteration:
         return None
@@ -81,9 +98,14 @@ def get_numeric_col(df, name):
     col_idx = get_col(df, name)
     if col_idx is None: return None
     values = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
+    # Keep only non-zero, non-NaN values
     return values[(values != 0) & (~values.isna())]
 
+# -----------------------------
+# Build summary table (per file)
+# -----------------------------
 def build_summary_table(df, core_df, file_path, plate=None, occt_version=None):
+    # Compute averages for water flow and CPU package
     wf_vals = get_numeric_col(df, WATER_FLOW)
     water_flow = round(wf_vals.mean(), 1) if wf_vals is not None and not wf_vals.empty else np.nan
 
@@ -92,7 +114,7 @@ def build_summary_table(df, core_df, file_path, plate=None, occt_version=None):
 
     avg_core_tmp = core_df[core_df != 0].mean().mean()
 
-    # Fallback if user input is missing
+    # Fallback: extract plate & OCCT version from file path if not provided
     if not plate or plate.strip() == "":
         parent_name = Path(file_path.name).parent.name
         parts = parent_name.split("-") if parent_name else []
@@ -102,18 +124,24 @@ def build_summary_table(df, core_df, file_path, plate=None, occt_version=None):
         parts = parent_name.split("-") if parent_name else []
         occt_version = next((p.replace("OCCT", "") for p in parts if p.startswith("OCCT")), "NA")
 
+    # Format values
     wf_str  = f"{water_flow:.2f} L/h" if not np.isnan(water_flow) else "NA"
     cpu_str = f"{cpu_package:.2f} °C" if not np.isnan(cpu_package) else "NA"
     avg_str = f"{avg_core_tmp:.2f} °C"
 
+    # Build summary table DataFrame
     columns = ["Plate", "OCCT Version", CPU_PACKAGE + " Temp", "Overall Avg Core Temp", WATER_FLOW]
     values = [plate, occt_version, cpu_str, avg_str, wf_str]
 
     return pd.DataFrame([values], columns=columns)
 
+# -----------------------------
+# Streamlit app main function
+# -----------------------------
 def run_core_heatmap_plot():
     st.header("🔍 Core Heatmap Plot")
 
+    # File uploader (accepts multiple)
     uploaded_files = st.file_uploader(
         "Upload one or more CSV or Excel files",
         type=['csv', 'xls', 'xlsx'],
@@ -123,29 +151,32 @@ def run_core_heatmap_plot():
     if uploaded_files:
         for i, uploaded_file in enumerate(uploaded_files):
             file_name = uploaded_file.name
-
             try:
+                # Load file (CSV or Excel)
                 if uploaded_file.name.endswith('.csv'):
                     df = pd.read_csv(uploaded_file, header=None)
                 else:
                     df = pd.read_excel(uploaded_file, header=None)
 
+                # Extract core data
                 core_df = extract_core_data(df)
-
                 st.subheader(f"📊 Heatmap for: `{file_name}`")
 
-                # Per-file user input using unique keys
+                # User input for Plate & OCCT Version
                 user_plate = st.text_input(f"🧾 Enter plate name for {file_name}:", "", key=f"plate_{i}")
                 user_occt_version = st.selectbox(
                     f"🔧 Select OCCT Version for {file_name}:",
                     options=["12.0.10", "14.0.09"],
                     key=f"occt_{i}"
                 )
+
+                # Build summary table + generate plot
                 summary = build_summary_table(df, core_df, uploaded_file, user_plate, user_occt_version)
                 fig = plot_heatmap(core_df, uploaded_file, summary_table=summary)
                 st.pyplot(fig)
 
-                # Save button with dynamic filename
+                # Download buttons
+                # ---- Save Heatmap as PNG ----
                 buf = BytesIO()
                 fig.savefig(buf, format="png", bbox_inches='tight', pad_inches=0.1)
                 st.download_button(
@@ -154,19 +185,20 @@ def run_core_heatmap_plot():
                     file_name=f"{file_name.replace('.', '_')}_heatmap.png",
                     mime="image/png"
                 )
+
+                # ---- Save summary & data as Excel ----
                 excel_buf = BytesIO()
                 with pd.ExcelWriter(excel_buf, engine='openpyxl') as writer:
                     summary.to_excel(writer, index=False, sheet_name="Summary")
                     core_df.to_excel(writer, index=True, sheet_name="Core Data")
-                
                 st.download_button(
                     label=f"📊 Download Summary for {file_name}",
                     data=excel_buf.getvalue(),
                     file_name=f"{file_name.replace('.', '_')}_summary.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-                st.markdown("---")  # Divider between plots
                 
+                st.markdown("---")  # Divider between files
 
             except Exception as e:
                 st.error(f"❌ Error processing {file_name}: {str(e)}")
