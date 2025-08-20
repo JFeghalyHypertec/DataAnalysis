@@ -1,4 +1,5 @@
 import streamlit as st
+# Import all custom analysis functions from your modules
 from graphs_plot import run_graphs_plot
 from coreHeatmapPlot import run_core_heatmap_plot
 from core_heatmap_comparaison import run_core_heatmap_comparaison
@@ -10,19 +11,22 @@ from core_positions import run_core_physical_layout
 from core_averages import run_display_core_avg_table
 from core_rank_distribution import run_core_rank_distribution
 
+# Configure the Streamlit dashboard (title and layout)
 st.set_page_config(page_title="CPU Analysis Dashboard", layout="wide")
 st.title("🧠 CPU Data Analysis Dashboard")
 st.write("Select a tool below to begin please:")
 
-# Simulated pop-up logic
+# Keep track of which tool is currently active (like a popup menu)
 if "active_tool" not in st.session_state:
     st.session_state.active_tool = None
 
+# Organize buttons into a grid layout using columns
 col1, col2, col3 = st.columns(3)
 col4, col5, col6 = st.columns(3)
 col7, col8, col9 = st.columns(3)
 col10, = st.columns(1)
 
+# Row 1 buttons
 with col1:
     if st.button("📊 Excel CPU Calculations"):
         st.session_state.active_tool = "Excel"
@@ -35,6 +39,7 @@ with col3:
     if st.button("🌡️ Core Heatmap Plot"):
         st.session_state.active_tool = "Heatmap"
 
+# Row 2 buttons
 with col4:
     if st.button("🔥 Core Difference Heatmap"):
         st.session_state.active_tool = "Comparison"
@@ -47,6 +52,7 @@ with col6:
     if st.button("🧩 Core Correlation Matrix"):
         st.session_state.active_tool = "Correlation Matrix"
 
+# Row 3 buttons
 with col7:
     if st.button("🌀 Core Clustering"):
         st.session_state.active_tool = "Clustering"
@@ -59,13 +65,15 @@ with col9:
     if st.button("🌡️ Average Temperature Table"):
         st.session_state.active_tool = "Average Table"
         
+# Row 4 button (centered)
 with col10:
     if st.button(" Core Rank Distribution"):
         st.session_state.active_tool = "Core Rank Distribution"
 
+# Divider for visual separation
 st.divider()
 
-# Upload and execute based on selection
+# Display and execute the selected tool
 if st.session_state.active_tool == "Excel":
     st.subheader("📊 Excel CPU Calculations")
     run_excel_CPU_calculations()
