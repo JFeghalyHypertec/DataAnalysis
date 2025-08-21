@@ -148,7 +148,7 @@ def run_core_heatmap_comparaison():
     
     # ----- Optional TR1 normalization -----
     if tr1_1 is not None and tr1_2 is not None:
-        normalize = st.checkbox("TR1 has been found in both file, do you want to normalize?", value=True)
+        normalize = st.checkbox("TR1 has been found in both files, do you want to normalize?", value=True)
         if normalize:
             tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
             a1 = a1.subtract(tr1_1, axis=0)
