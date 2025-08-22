@@ -1,299 +1,243 @@
-# core_heatmap_comparaison.py
-# Streamlit module: compare two OCCT core-temperature CSVs and show a difference heatmap + per-core avg bars
-
-import io
-from typing import Tuple, Optional
-
-import numpy as np
 import pandas as pd
+import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 import streamlit as st
+from io import BytesIO
+import matplotlib.gridspec as gridspec
+from pathlib import Path
 
 # -----------------------------
-# Config
+# Constants
 # -----------------------------
-START_ROW = 3  # data starts at row index 3 (0-based), as in your existing scripts
-CORE_LIST = [f"Core {i}" for i in range(26)]  # expected core column names in the header row (row index 1)
-TIME_COL_INDEX = 0  # first column is time (as in your existing sheets); we normalize to start at 0
-EXCLUDE_ZEROS_FROM_AVG = True  # replace 0 with NaN before averaging (optional but common for OCCT exports)
+START_ROW = 3  # Row where the actual numeric data starts
+CORE_LIST = [f"Core {i}" for i in range(26)]  # Core labels expected in files
+TR1 = "TR1 Temperature (System Board)"  # Optional TR1 system board temp column
+CPU_PACKAGE = "CPU Package"
+WATER_FLOW = "Water Flow"
+
 
 # -----------------------------
-# IO / Parsing
+# Extract per-core + TR1 data
 # -----------------------------
-def read_uploaded_csv(uploaded_file) -> pd.DataFrame:
+def extract_core_data(df):
     """
-    Reads an uploaded OCCT-like CSV with no header row, preserving all rows.
-    We keep header-less to let extract_core_data pull names from row index 1.
+    Extract core and TR1 data, resample them into 1-minute buckets,
+    and drop the last (possibly incomplete) minute.
     """
-    # force UTF-8 with fallback
-    data = uploaded_file.read()
+    # Time is always first column (in seconds)
+    time = pd.to_numeric(df.iloc[START_ROW:, 0], errors='coerce')
+
+    # Select columns corresponding to CPU cores
+    core_cols = [i for i in range(df.shape[1]) if df.iloc[1, i] in CORE_LIST]
+    core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors='coerce')
+    core_data.index = time
+    core_data.columns = [df.iloc[1, i] for i in core_cols]
+    core_data = core_data.replace(0, np.nan)  # Replace 0 with NaN
+
+    # ----- TR1 temperature extraction -----
+    tr1_col = next((i for i in range(df.shape[1]) if df.iloc[1, i] == TR1), None)
+    if tr1_col is not None:
+        tr1_data = pd.to_numeric(df.iloc[START_ROW:, tr1_col], errors='coerce')
+        tr1_data.index = time
+        tr1_data = tr1_data.replace(0, np.nan)
+        # Group TR1 into 1-minute averages
+        tr1_grouped = tr1_data.groupby((tr1_data.index // 60) * 60).mean()
+        # Drop last (possibly incomplete) minute
+        if not tr1_grouped.empty:
+            last_tr1 = tr1_grouped.index.max()
+            tr1_grouped = tr1_grouped[tr1_grouped.index < last_tr1]
+    else:
+        tr1_grouped = None
+
+    # ----- Core data → 1-minute buckets -----
+    core_data['time_bucket'] = (core_data.index // 60) * 60
+    grouped_core = core_data.groupby('time_bucket').mean().dropna(axis=1, how='all')
+    if not grouped_core.empty:
+        last_bucket = grouped_core.index.max()
+        grouped_core = grouped_core[grouped_core.index < last_bucket]
+
+    return grouped_core, tr1_grouped
+
+
+# -----------------------------
+# Helpers for extracting columns
+# -----------------------------
+def get_col(df, name):
+    """Return the column index of a given header name, or None if not found."""
     try:
-        df = pd.read_csv(io.BytesIO(data), header=None, engine="python")
-    except Exception:
-        df = pd.read_csv(io.BytesIO(data), header=None, engine="python", encoding_errors="ignore")
-    return df
+        return next(i for i in range(df.shape[1]) if df.iloc[1, i] == name)
+    except StopIteration:
+        return None
 
-
-def extract_core_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Extracts time series of core temperatures.
-    - Assumes row index 1 contains the header names (e.g., "CPU Package", "Core 0", ..., "Core 25").
-    - Data starts at START_ROW.
-    - Returns a DataFrame indexed by time (seconds from 0), columns = common core labels.
-    """
-    if df.shape[0] <= START_ROW + 1 or df.shape[1] < 2:
-        raise ValueError("File format too short or malformed: not enough rows/columns.")
-
-    # find core columns by name in row index 1
-    header_row = df.iloc[1, :]
-    core_cols = [i for i in range(df.shape[1]) if header_row.iloc[i] in CORE_LIST]
-
-    if not core_cols:
-        raise ValueError("No core temperature columns found (expected headers like 'Core 0', 'Core 1', ...).")
-
-    # time vector from first column
-    time = pd.to_numeric(df.iloc[START_ROW:, TIME_COL_INDEX], errors="coerce")
-    time = time - time.iloc[0]  # normalize to start at 0
-
-    # core data rows
-    core_data = df.iloc[START_ROW:, core_cols].apply(pd.to_numeric, errors="coerce")
-
-    # build result
-    out = core_data.copy()
-    out.index = time.values
-    out.columns = [header_row.iloc[i] for i in core_cols]
-
-    # drop all-NaN rows at the very end
-    out = out[~out.isna().all(axis=1)]
-
-    return out
+def get_numeric_col(df, name):
+    """Return a numeric Series for a given column, excluding 0 and NaN values."""
+    col_idx = get_col(df, name)
+    if col_idx is None:
+        return pd.Series(dtype=float)
+    vals = pd.to_numeric(df.iloc[START_ROW:, col_idx], errors='coerce')
+    return vals[(vals != 0) & (~vals.isna())]
 
 
 # -----------------------------
-# Alignment / Difference
+# Read uploaded file safely
 # -----------------------------
-def align_common(core1: pd.DataFrame, core2: pd.DataFrame) -> Tuple[pd.Index, pd.Index]:
-    """
-    Returns (common_times, common_cols)
-    """
-    common_times = core1.index.intersection(core2.index)
-    common_cols = core1.columns.intersection(core2.columns)
-    return common_times, common_cols
-
-
-def compute_diff(core1: pd.DataFrame, core2: pd.DataFrame) -> pd.DataFrame:
-    """
-    Compute difference DataFrame (file2 - file1) for common times and cores.
-    Index converted to hours (rounded).
-    """
-    idx, cols = align_common(core1, core2)
-
-    if len(idx) == 0 or len(cols) == 0:
-        return pd.DataFrame()
-
-    a1 = core1.loc[idx, cols]
-    a2 = core2.loc[idx, cols]
-
-    df_diff = a2 - a1
-    if df_diff.empty:
-        return df_diff
-
-    # convert index (seconds) -> hours for nicer axis
-    df_diff.index = (pd.to_numeric(df_diff.index, errors="coerce") / 3600.0).round(3)
-    return df_diff
+def read_uploaded_file(uploaded_file):
+    """Read CSV/Excel files into a DataFrame."""
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            return pd.read_csv(uploaded_file, header=None)
+        elif uploaded_file.name.endswith(('.xls', '.xlsx')):
+            return pd.read_excel(uploaded_file, header=None, engine='openpyxl')
+        else:
+            raise ValueError(f"Unsupported file type: {uploaded_file.name}")
+    except Exception as e:
+        st.error(f"❌ Failed to read file {uploaded_file.name}: {e}")
+        return None
 
 
 # -----------------------------
-# Plotting
-# -----------------------------
-def _safe_xlim_for_avgs(avgs: pd.Series) -> Tuple[float, float]:
-    """
-    Produce finite axis limits for average bar chart even if avgs has NaN/Inf or is empty.
-    """
-    if avgs is None or avgs.empty:
-        return (-1.0, 1.0)
-
-    vals = avgs.values.astype(float)
-    vals = vals[np.isfinite(vals)]
-    if vals.size == 0:
-        return (-1.0, 1.0)
-
-    xmin = float(vals.min())
-    xmax = float(vals.max())
-    if xmin == xmax:  # flat case
-        pad = max(0.5, abs(xmax) * 0.2 + 0.1)
-        return (xmin - pad, xmax + pad)
-
-    pad = max(0.5, 0.1 * max(abs(xmin), abs(xmax)))
-    return (xmin - pad, xmax + pad)
-
-
-def plot_diff_heatmap_and_bars(df_diff: pd.DataFrame, title_left: str, title_right: str) -> None:
-    """
-    Create a two-pane figure:
-      - Left: heatmap (time vs core) of difference
-      - Right: horizontal bar chart of per-core average difference
-    Handles empty / NaN data gracefully.
-    """
-    st.subheader("ΔTemp Heatmap (File 2 - File 1) and Per-Core Averages")
-
-    # Early validation
-    if df_diff is None or df_diff.empty:
-        st.warning("No valid overlap between files (time and/or cores). Unable to compute differences.")
-        return
-
-    # Optionally treat zeros as NaN for averaging only
-    diff_for_avg = df_diff.copy()
-    if EXCLUDE_ZEROS_FROM_AVG:
-        diff_for_avg = diff_for_avg.replace(0, np.nan)
-
-    # Compute per-core averages (drop cores that are all-NaN)
-    avgs = diff_for_avg.mean(axis=0).dropna()
-    avgs = avgs.sort_index(ascending=True)  # ensure Core 0 ... Core n order
-    avgs_for_bars = avgs[::-1]  # reverse for a nicer top-down bar list
-
-    # Create figure
-    fig = plt.figure(figsize=(14, 7))
-    spec = gridspec.GridSpec(ncols=2, nrows=1, width_ratios=[1.25, 1], wspace=0.25)
-
-    # ---- Heatmap (left) ----
-    ax0 = fig.add_subplot(spec[0, 0])
-
-    # Prepare data matrix for imshow: rows=time, cols=cores
-    # Sort by time increasing and columns in natural order
-    df_plot = df_diff.sort_index(axis=0)
-    df_plot = df_plot.reindex(sorted(df_plot.columns, key=lambda c: int(c.split()[-1])), axis=1)
-
-    if df_plot.shape[0] == 0 or df_plot.shape[1] == 0 or df_plot.to_numpy(allna=True).size == 0:
-        ax0.text(0.5, 0.5, "No data to plot heatmap", ha="center", va="center")
-        ax0.axis("off")
-    else:
-        mat = df_plot.to_numpy()
-        # Handle all-NaN gracefully by filling for display (cmap will still show neutral if near 0)
-        if np.all(~np.isfinite(mat)):
-            mat = np.zeros_like(mat)
-
-        im = ax0.imshow(
-            mat,
-            aspect="auto",
-            origin="lower",
-            interpolation="nearest"
-        )
-        cb = fig.colorbar(im, ax=ax0)
-        cb.set_label("ΔTemp (°C)")
-
-        # X-axis: cores
-        ax0.set_xticks(range(df_plot.shape[1]))
-        ax0.set_xticklabels(df_plot.columns, rotation=90)
-        # Y-axis: time (hours)
-        ax0.set_yticks(np.linspace(0, df_plot.shape[0]-1, min(df_plot.shape[0], 6)).astype(int))
-        if df_plot.shape[0] > 0:
-            ylabels = df_plot.index.values[
-                np.linspace(0, df_plot.shape[0]-1, min(df_plot.shape[0], 6)).astype(int)
-            ]
-            ax0.set_yticklabels([f"{y:.2f} h" for y in ylabels])
-        ax0.set_xlabel("Core")
-        ax0.set_ylabel("Time (h)")
-        ax0.set_title(title_left)
-
-    # ---- Bar chart (right) ----
-    ax1 = fig.add_subplot(spec[0, 1])
-    ax1.set_title(title_right)
-
-    if avgs_for_bars.empty:
-        # Show an empty panel with safe limits and a message
-        ax1.set_xlim(-1, 1)
-        ax1.set_xlabel("ΔTemp (°C)")
-        ax1.text(0.5, 0.5, "No valid data to compute per-core averages.", ha="center", va="center")
-        ax1.set_yticks([])
-    else:
-        bars = ax1.barh(avgs_for_bars.index, avgs_for_bars.values)
-        ax1.set_xlabel("ΔTemp (°C)")
-
-        # Safe, finite x-limits
-        xmin, xmax = _safe_xlim_for_avgs(avgs_for_bars)
-        ax1.set_xlim(xmin, xmax)
-
-        # Annotate bar values
-        span = xmax - xmin
-        offset = 0.02 * span
-        for b, v in zip(bars, avgs_for_bars.values):
-            # place text just beyond the end of the bar
-            x = v + (offset if v >= 0 else -offset)
-            ax1.text(x, b.get_y() + b.get_height()/2, f"{v:.2f}°C", va="center")
-
-        # Grid for readability
-        ax1.grid(axis="x", linestyle="--", alpha=0.4)
-
-    st.pyplot(fig)
-
-
-# -----------------------------
-# Streamlit Entrypoint
+# Main Streamlit app function
 # -----------------------------
 def run_core_heatmap_comparaison():
-    """
-    Streamlit UI: upload two CSV files, parse, align, compute (file2 - file1),
-    and plot a difference heatmap + per-core average bars with robust guards.
-    """
-    st.header("Core Heatmap Comparison (File 2 − File 1)")
+    st.header("🔥 Core Difference Heatmap")
 
-    st.markdown(
-        "Upload **two** OCCT CSV exports with core temperatures. "
-        "This tool aligns common timestamps and cores, computes the difference (File 2 − File 1), "
-        "and visualizes it as a heatmap with per-core average deltas."
-    )
-
-    colA, colB = st.columns(2)
-    with colA:
-        file1 = st.file_uploader("File 1 (baseline/reference)", type=["csv"], key="cmp_f1")
-    with colB:
-        file2 = st.file_uploader("File 2 (comparison)", type=["csv"], key="cmp_f2")
-
+    # Upload two files for comparison
+    file1 = st.file_uploader("Upload the FIRST CPU data file", type=["csv","xls","xlsx"], key="file1_cmp")
+    file2 = st.file_uploader("Upload the SECOND CPU data file", type=["csv","xls","xlsx"], key="file2_cmp")
+    st.info("ℹ️ Recommended: hottest test as second, coldest as first for positive ΔTemp.")
     if not file1 or not file2:
-        st.info("Please upload both files to proceed.")
+        return
+    
+    # Option to swap the two files (reverse comparison)
+    inverse = st.checkbox("Do you want to see reverse heatmap?", value=False)
+    if inverse:
+        file1, file2 = file2, file1
+        
+    # Read files into raw DataFrames
+    raw1 = read_uploaded_file(file1)
+    raw2 = read_uploaded_file(file2)
+    if raw1 is None or raw2 is None:
         return
 
-    # Parse files
-    try:
-        df1 = read_uploaded_csv(file1)
-        df2 = read_uploaded_csv(file2)
-    except Exception as e:
-        st.error(f"Failed to read uploaded files: {e}")
+    file1_name, file2_name = file1.name, file2.name
+
+    # Extract per-core + TR1 data
+    core1, tr1_1 = extract_core_data(raw1)
+    core2, tr1_2 = extract_core_data(raw2)
+
+    # User input: Plate + OCCT version
+    plate1 = st.text_input(f"Plate for {file1_name}:", key="plate1_cmp").strip() or "NA"
+    occt1 = st.selectbox(f"OCCT Version for {file1_name}:", options=["12.0.10", "14.0.09"], key="occt1_cmp").strip() or "NA"
+    plate2 = st.text_input(f"Plate for {file2_name}:", key="plate2_cmp").strip() or "NA"
+    occt2 = st.selectbox(f"OCCT Version for {file2_name}:", options=["12.0.10", "14.0.09"], key="occt2_cmp").strip() or "NA"
+    
+    st.subheader("📋 Comparison Summary")
+
+    # Ensure both files cover roughly the same test duration
+    t1, t2 = core1.index.max(), core2.index.max()
+    if abs(t1 - t2) > 60:
+        st.error(f"❗ Time misalignment: {abs(t1-t2)}s")
         return
+    
+    # Align time and common columns
+    idx = core1.index.intersection(core2.index)
+    cols_common = core1.columns.intersection(core2.columns)
+    a1 = core1.loc[idx, cols_common]
+    a2 = core2.loc[idx, cols_common]
+    
+    # ----- Optional TR1 normalization -----
+    if tr1_1 is not None and tr1_2 is not None:
+        normalize = st.checkbox("TR1 has been found in both file, do you want to normalize?", value=True)
+        if normalize:
+            tr1_1, tr1_2 = tr1_1.loc[idx], tr1_2.loc[idx]
+            a1 = a1.subtract(tr1_1, axis=0)
+            a2 = a2.subtract(tr1_2, axis=0)
+            adjust_temps1 = -tr1_1[tr1_1 != 0].mean() + 21
+            adjust_temps2 = -tr1_2[tr1_2 != 0].mean() + 21
+            normalize_info = "Core temperatures normalized by TR1."
+        else:
+            normalize_info = "Core temperatures NOT normalized by TR1."
+            adjust_temps1 = adjust_temps2 = 0
+    else:
+        normalize_info = "Core temperatures NOT normalized by TR1."
+        adjust_temps1 = adjust_temps2 = 0
+        
+    # ----- Calculate CPU package, overall temps, water flow -----
+    cpu1 = get_numeric_col(raw1, CPU_PACKAGE)
+    cpu2 = get_numeric_col(raw2, CPU_PACKAGE)
+    cpu1_avg = cpu1.mean() + adjust_temps1 if not cpu1.empty else np.nan
+    cpu2_avg = cpu2.mean() + adjust_temps2 if not cpu2.empty else np.nan
+    cpu_diff = cpu2_avg - cpu1_avg if pd.notnull(cpu1_avg) and pd.notnull(cpu2_avg) else np.nan
 
-    # Extract core data
-    try:
-        core1 = extract_core_data(df1)
-        core2 = extract_core_data(df2)
-    except Exception as e:
-        st.error(f"Failed to extract core data: {e}")
-        return
+    overall1 = np.nanmean(core1.values.flatten()) + adjust_temps1 if core1.size else np.nan
+    overall2 = np.nanmean(core2.values.flatten()) + adjust_temps2 if core2.size else np.nan
+    overall_diff = overall2 - overall1 if pd.notnull(overall1) and pd.notnull(overall2) else np.nan
 
-    if core1.empty or core2.empty:
-        st.error("Extracted core data is empty in one or both files.")
-        return
+    wf1 = get_numeric_col(raw1, WATER_FLOW)
+    wf2 = get_numeric_col(raw2, WATER_FLOW)
+    wf1_avg = wf1.mean() if not wf1.empty else np.nan
+    wf2_avg = wf2.mean() if not wf2.empty else np.nan
+    wf_diff = wf2_avg - wf1_avg if pd.notnull(wf1_avg) and pd.notnull(wf2_avg) else np.nan
+    
+    # ----- Build summary dataframe -----
+    cols = ["File", "Plate", "OCCT Version", "CPU Package Temperature", "Overall Avg Core Temp", WATER_FLOW]
+    file1_name = file1_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
+    file2_name = file2_name.replace(".csv", "").replace(".xls", "").replace(".xlsx", "")
+    data = [
+        [file1_name[5:], plate1, occt1, round(cpu1_avg, 2) if pd.notnull(cpu1_avg) else "NA",
+         round(overall1, 2) if pd.notnull(overall1) else "NA", round(wf1_avg,2) if pd.notnull(wf1_avg) else "NA"],
+        [file2_name[5:], plate2, occt2, round(cpu2_avg, 2) if pd.notnull(cpu2_avg) else "NA",
+         round(overall2, 2) if pd.notnull(overall2) else "NA", round(wf2_avg,2) if pd.notnull(wf2_avg) else "NA"],
+        ["File2 - File1", "", "", round(cpu_diff,2) if pd.notnull(cpu_diff) else "NA",
+         round(overall_diff,2) if pd.notnull(overall_diff) else "NA", round(wf_diff,2) if pd.notnull(wf_diff) else "NA"]
+    ]
+    summary_df = pd.DataFrame(data, columns=cols)
 
-    # Quick sanity: ensure we have some overlap in time and columns
-    idx, cols = align_common(core1, core2)
-    if len(idx) == 0:
-        st.warning("No overlapping timestamps between the two files after normalization.")
-    if len(cols) == 0:
-        st.warning("No common core columns between the two files (e.g., Core 0..N).")
+    # ----- Difference heatmap (file2 - file1) -----
+    df_diff = a2 - a1
+    df_diff.index = (df_diff.index/3600).round(2)  # Convert time → hours
 
-    # Compute difference
-    df_diff = compute_diff(core1, core2)
+    fig = plt.figure(figsize=(16,12))
+    spec = gridspec.GridSpec(2, 2, height_ratios=[3, 1], width_ratios=[4,1])
 
-    # Titles
-    title_left = "ΔTemp Heatmap (aligned time × core)"
-    title_right = "Average ΔTemp per Core"
+    # Heatmap subplot
+    ax0 = fig.add_subplot(spec[0,0])
+    sns.heatmap(df_diff.T, cmap="coolwarm", center=0, cbar_kws={'label':'ΔTemp (°C)'}, ax=ax0)
+    ax0.set_title(f"Diff Heatmap: {file2_name} - {file1_name}\n{normalize_info}")
+    ax0.set_xlabel("Time (h)")
+    ax0.set_ylabel("CPU Cores")
 
-    # Plot (with all guards built-in)
-    plot_diff_heatmap_and_bars(df_diff, title_left, title_right)
+    # Per-core average ΔTemp bar chart
+    avgs = df_diff[df_diff!=0].mean().round(2)
+    ax1 = fig.add_subplot(spec[0,1])
+    avgs = avgs[::-1]  # Reverse order so Core 0 at top
+    colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in avgs.values]
+    bars = ax1.barh(avgs.index, avgs.values, color=colors)
+    ax1.set_title("Avg ΔTemp per Core")
+    ax1.set_xlim(avgs.min()-5, avgs.max()+5)
+    ax1.set_xlabel("°C")
+    for b,v in zip(bars, avgs.values):
+        ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
 
+    # Summary table subplot
+    ax_table = fig.add_subplot(spec[1,:])
+    ax_table.axis("off")
+    col_widths = [0.166, 0.3, 0.1, 0.166, 0.166, 0.1]
+    table = ax_table.table(cellText=summary_df.values, 
+                           colLabels=summary_df.columns, 
+                           colWidths=col_widths,
+                           loc='center', 
+                           cellLoc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(16)
+    table.scale(1.5, 1.5)
 
-# If you want to run this module directly with `streamlit run core_heatmap_comparaison.py`,
-# uncomment the lines below.
-# if __name__ == "__main__":
-#     run_core_heatmap_comparaison()
+    # Show + download
+    st.pyplot(fig)
+    buf = BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.1)
+    st.download_button("📥 Download Difference Heatmap",
+                       data=buf.getvalue(),
+                       file_name="difference_heatmap.png",
+                       mime="image/png")
