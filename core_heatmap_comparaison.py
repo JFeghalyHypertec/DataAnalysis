@@ -215,10 +215,7 @@ def run_core_heatmap_comparaison():
     colors = ['red' if x > 0 else 'blue' if x < 0 else 'gray' for x in avgs.values]
     bars = ax1.barh(avgs.index, avgs.values, color=colors)
     ax1.set_title("Avg ΔTemp per Core")
-    try:
-        ax1.set_xlim(avgs.min()-5, avgs.max()+5)
-    except ValueError:
-        ax1.set_xlim(-10, 10)
+    ax1.set_xlim(avgs.min()-5, avgs.max()+5)
     ax1.set_xlabel("°C")
     for b,v in zip(bars, avgs.values):
         ax1.text(v+0.5, b.get_y()+b.get_height()/2, f"{v}°C", va='center')
